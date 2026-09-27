@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0D1210">
+<title>德州练习桌</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0D1210;--felt1:#1E3327;--felt2:#152419;--panel:#161D19;--line:#2B382F;
+--fg:#EAEFEB;--dim:#94A39A;--mute:#5E6D64;--gold:#D9A441;--red:#E05252;--blue:#5B8DD9}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font-family:"IBM Plex Sans","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+min-height:100dvh;display:flex;justify-content:center;
+padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom))}
+.wrap{width:100%;max-width:430px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+
+/* 顶栏：等级 / 金币 / 每日奖励 */
+.top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.lv{background:var(--panel);border-radius:9px;padding:7px 10px;display:flex;align-items:center;gap:8px;flex:1}
+.lv b{font-size:13px;font-weight:500;color:var(--gold);white-space:nowrap}
+.xpbar{flex:1;height:5px;border-radius:3px;background:#242E27;overflow:hidden}
+.xpbar i{display:block;height:100%;background:var(--gold);width:0%}
+.coins{background:var(--panel);border-radius:9px;padding:7px 12px;font-size:13.5px;white-space:nowrap}
+.coins b{color:var(--gold);font-weight:500}
+#bonus{font-size:12.5px;padding:7px 10px;min-height:0;border-radius:9px}
+
+/* 牌桌 */
+.tablewrap{position:relative;width:100%;aspect-ratio:1/1.02;margin:2px 0 8px}
+.felt{position:absolute;inset:7% 3%;border-radius:48%/44%;
+background:radial-gradient(ellipse at 50% 42%,var(--felt1),var(--felt2) 78%);
+border:2px solid #2E4636;box-shadow:inset 0 0 34px rgba(0,0,0,.45)}
+.center{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);text-align:center;width:88%}
+.pot{font-size:12px;color:var(--dim);margin-bottom:7px}
+.pot b{color:var(--gold);font-weight:500}
+.bcards{display:flex;justify-content:center;gap:5px;min-height:53px}
+.card{width:37px;height:52px;border-radius:6px;background:#F3EFE6;color:#1B1B1B;
+display:flex;flex-direction:column;justify-content:center;align-items:center;
+font-family:"IBM Plex Mono",monospace;font-size:14.5px;font-weight:500;line-height:1.05}
+.card.r{color:#C22E2E}
+.card.slot{background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.14)}
+.card small{font-size:12.5px}
+.seat{position:absolute;transform:translate(-50%,-50%);text-align:center;width:82px;transition:opacity .25s}
+.seat .ava{width:44px;height:44px;border-radius:50%;margin:0 auto 3px;
+background:#243128;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;
+font-size:17px;transition:border-color .2s,box-shadow .2s}
+.seat.act .ava{border-color:var(--gold);box-shadow:0 0 12px rgba(217,164,65,.45)}
+.seat.out{opacity:.35}
+.seat .nm{font-size:11.5px;color:var(--fg)}
+.seat .sty{font-size:9.5px;color:var(--gold);letter-spacing:.12em}
+.seat .ck{font-size:11px;color:var(--dim)}
+.seat .btnmark{position:absolute;top:-4px;right:6px;width:17px;height:17px;border-radius:50%;
+background:#EAEFEB;color:#111;font-size:10px;font-weight:600;display:none;align-items:center;justify-content:center}
+.seat.dealer .btnmark{display:flex}
+.bet{position:absolute;transform:translate(-50%,-50%);font-size:11px;
+background:rgba(0,0,0,.5);border:1px solid rgba(217,164,65,.55);color:var(--gold);
+border-radius:20px;padding:2.5px 8px;white-space:nowrap;display:none}
+.holes{display:flex;gap:4px;justify-content:center;margin-top:4px;min-height:46px}
+.holes .card{width:32px;height:45px;font-size:13px}
+.holes .card small{font-size:11px}
+.aic{font-size:10.5px;color:var(--mute);letter-spacing:.1em}
+
+/* 教练 */
+.coach{background:var(--panel);border-radius:12px;padding:11px 13px;margin-bottom:8px}
+.coach h2{font-size:10.5px;font-weight:500;letter-spacing:.22em;color:var(--mute);margin:0 0 7px}
+.eq{display:flex;flex-wrap:wrap;gap:4px 13px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;margin-bottom:7px}
+.eq span{color:var(--dim)}
+.coach p{font-size:13px;line-height:1.6;margin:0}
+#log{font-size:12px;line-height:1.65;color:var(--dim);min-height:36px;margin:0 2px 8px}
+
+/* 操作 */
+.row{display:grid;gap:7px}
+.r3{grid-template-columns:repeat(3,1fr)}
+.r4{grid-template-columns:repeat(4,1fr);margin-top:7px}
+.r2{grid-template-columns:1fr 1fr;margin-top:7px}
+button{font:inherit;font-size:13.5px;color:var(--fg);background:#22302A;
+border:1px solid var(--line);border-radius:9px;padding:11px 2px;min-height:45px}
+button:disabled{opacity:.32}
+button:active:not(:disabled){transform:scale(.985)}
+button.warn{color:var(--red)}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* 成就浮层 */
+#toast{position:fixed;left:50%;top:14px;transform:translateX(-50%) translateY(-80px);
+background:#1E2A22;border:1px solid var(--gold);color:var(--fg);border-radius:12px;
+padding:10px 18px;font-size:13.5px;z-index:9;transition:transform .35s;white-space:nowrap}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast b{color:var(--gold);font-weight:500}
+#achv{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;
+align-items:center;justify-content:center;z-index:8;padding:20px}
+#achv.show{display:flex}
+.achbox{background:var(--panel);border-radius:14px;padding:18px;width:100%;max-width:340px}
+.achbox h3{margin:0 0 12px;font-size:14px;font-weight:500;letter-spacing:.15em}
+.achbox ul{list-style:none;margin:0 0 14px;padding:0}
+.achbox li{font-size:13px;padding:7px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}
+.achbox li.got{color:var(--gold)}
+.achbox li span:last-child{white-space:nowrap;color:var(--mute)}
+.achbox li.got span:last-child{color:var(--gold)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="top">
+  <div class="lv"><b id="lvb">Lv.1</b><div class="xpbar"><i id="xpi"></i></div></div>
+  <div class="coins mono">🪙 <b id="coin">2000</b></div>
+  <button id="bonus">每日+500</button>
+  <button id="buy" style="font-size:12.5px;padding:7px 10px;min-height:0;border-radius:9px">补码</button>
+</div>
+
+<div class="tablewrap" id="tw">
+  <div class="felt"></div>
+  <div class="center">
+    <div class="pot mono">底池 <b id="pot">0</b></div>
+    <div class="bcards" id="bd"></div>
+  </div>
+</div>
+
+<div class="coach">
+  <h2>教练</h2>
+  <div class="eq"><span>胜率</span><b id="eqv">--</b><span>底池赔率</span><b id="po">--</b><span>牌型</span><b id="hname">--</b></div>
+  <div class="eq" id="outrow" style="display:none"><span>补牌</span><b id="outs">--</b><span>速算</span><b id="quick">--</b><span>模拟</span><b id="real">--</b></div>
+  <p id="advice">点「发新一手」开始。金币就是你的筹码，输光可以领每日奖励或达成成就回血。</p>
+</div>
+
+<div id="log"></div>
+
+<div class="row r3">
+  <button id="bFold" class="warn">弃牌</button>
+  <button id="bCheck">过牌</button>
+  <button id="bCall">跟注</button>
+</div>
+<div class="row r4">
+  <button id="r33">加⅓池</button>
+  <button id="r50">加半池</button>
+  <button id="r100">加满池</button>
+  <button id="rAll">全下</button>
+</div>
+<div class="row r4">
+  <button id="bDeal">发新一手</button>
+  <button id="bRev" disabled>复盘</button>
+  <button id="bOpp">对手</button>
+  <button id="bAch">成就</button>
+</div>
+</div>
+
+<div id="toast"></div>
+<div id="achv"><div class="achbox">
+  <h3>成就</h3><ul id="achlist"></ul>
+  <button id="achClose" style="width:100%">关闭</button>
+</div></div>
+<div id="oppv" style="position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:8;padding:20px">
+<div class="achbox">
+  <h3>对手风格</h3>
+  <div style="font-size:12.5px;line-height:1.7;color:var(--fg)">
+  <p style="margin:0 0 10px"><b style="color:var(--gold)">毒王 · 松凶</b><br>参考 Tom Dwan 的公开打法：范围极宽、下注凶狠、诈唬频率高。<span style="color:var(--dim)">克制：拿到中强牌别被吓跑，多用跟注抓他的诈唬。</span></p>
+  <p style="margin:0 0 10px"><b style="color:var(--gold)">丹牛 · 小球</b><br>参考 Daniel Negreanu 的小球战术：小注多看牌、翻牌后靠牌感周旋。<span style="color:var(--dim)">克制：他下大注时往往真有货，及时让路。</span></p>
+  <p style="margin:0 0 10px"><b style="color:var(--gold)">艾维 · 均衡</b><br>参考 Phil Ivey 的均衡风格：紧凶有度、会用强牌慢打设陷阱。<span style="color:var(--dim)">克制：他突然过牌不代表弱，转牌河牌小心埋伏。</span></p>
+  <p style="margin:0 0 10px"><b style="color:var(--gold)">教父 · 老派</b><br>参考 Doyle Brunson 的老派激进：直来直去，有牌就重注要价，极少虚张。<span style="color:var(--dim)">克制：他加注基本是真的，弃牌不亏；他过牌时可以偷。</span></p>
+  <p style="margin:0 0 10px"><b style="color:var(--gold)">帽子 · 岩石</b><br>参考 Phil Hellmuth 的超紧打法：入池极少、只打大牌，还会用怪物牌慢打钓鱼。<span style="color:var(--dim)">克制：他不入池时大胆偷他的盲注；他一旦反击立刻放弃边缘牌。</span></p>
+  <p style="margin:0 0 12px"><b style="color:var(--gold)">疯子 · 极松</b><br>参考 Gus Hansen 的狂野风格：什么牌都玩，跟注极宽，时不时乱加注搅局。<span style="color:var(--dim)">克制：别对他诈唬——他什么都跟；拿到真牌往死里下注收租即可。</span></p>
+  </div>
+  <button id="oppClose" style="width:100%">关闭</button>
+</div></div>
+<div id="revv" style="position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:8;padding:20px">
+<div class="achbox">
+  <h3>本手复盘</h3>
+  <div id="revbody"></div>
+  <button id="revClose" style="width:100%;margin-top:12px">关闭</button>
+</div></div>
+
+<script>
+(function(){
+var SU=["♠","♥","♦","♣"],RK={2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10",11:"J",12:"Q",13:"K",14:"A"};
+var CAT=["高牌","一对","两对","三条","顺子","同花","葫芦","四条","同花顺"];
+var SB=10,BB=20;
+function E(i){return document.getElementById(i)}
+
+/* ---------- 牌力引擎 ---------- */
+function mkDeck(){var d=[],s,r;for(s=0;s<4;s++)for(r=2;r<=14;r++)d.push({r:r,s:s});
+  for(var i=d.length-1;i>0;i--){var j=(Math.random()*(i+1))|0,t=d[i];d[i]=d[j];d[j]=t}return d}
+function ev5(cs){
+  var rs=cs.map(function(c){return c.r}).sort(function(a,b){return b-a});
+  var fl=cs.every(function(c){return c.s===cs[0].s});
+  var u=[],cnt={},i;
+  for(i=0;i<5;i++)cnt[rs[i]]=(cnt[rs[i]]||0)+1;
+  for(var k in cnt)u.push(+k);
+  u.sort(function(a,b){return cnt[b]-cnt[a]||b-a});
+  var st=0;
+  if(u.length===5){if(rs[0]-rs[4]===4)st=rs[0];
+    else if(rs[0]===14&&rs[1]===5&&rs[4]===2)st=5}
+  if(fl&&st)return[8,st];
+  if(cnt[u[0]]===4)return[7,u[0],u[1]];
+  if(cnt[u[0]]===3&&cnt[u[1]]===2)return[6,u[0],u[1]];
+  if(fl)return[5].concat(rs);
+  if(st)return[4,st];
+  if(cnt[u[0]]===3)return[3,u[0],u[1],u[2]];
+  if(cnt[u[0]]===2&&cnt[u[1]]===2)return[2,u[0],u[1],u[2]];
+  if(cnt[u[0]]===2)return[1,u[0],u[1],u[2],u[3]];
+  return[0].concat(rs)}
+function cmp(a,b){for(var i=0;i<Math.max(a.length,b.length);i++){
+  var x=a[i]||0,y=b[i]||0;if(x!==y)return x-y}return 0}
+function ev7(cs){var best=null,i,j;
+  for(i=0;i<7;i++)for(j=i+1;j<7;j++){
+    var h=[],k;for(k=0;k<7;k++)if(k!==i&&k!==j)h.push(cs[k]);
+    var v=ev5(h);if(!best||cmp(v,best)>0)best=v}
+  return best}
+function bestOf(cs){var n=cs.length,best=null,bi=null,i,j;
+  function pick(h){var v=ev5(h);if(!best||cmp(v,best)>0){best=v;bi=h}}
+  if(n===5)return cs;
+  if(n===6){for(i=0;i<6;i++){var h=[];for(var k=0;k<6;k++)if(k!==i)h.push(cs[k]);pick(h)}}
+  /* 修复：补上 7 张分支（原版是潜在错误的死代码） */
+  if(n===7){for(i=0;i<7;i++)for(j=i+1;j<7;j++){var h7=[],m;
+    for(m=0;m<7;m++)if(m!==i&&m!==j)h7.push(cs[m]);pick(h7)}}
+  return bi||cs.slice(0,5)}
+function bestVal(cs){if(cs.length===7)return ev7(cs);return ev5(bestOf(cs))}
+
+/* ===== 修复①：范围感知的胜率模拟 =====
+   原版把所有未弃牌对手当成「随机手牌 + 全部摊牌」，多人桌上会把 AA
+   算成 ~49%，导致教练荒谬地建议弃牌。现在：
+   - 用 Chen 公式给起手牌打分；
+   - 根据对手本手的翻前行动（加注/跟注/过牌/未行动）推断其范围，
+     模拟时只从该范围里抽他的底牌；
+   - 翻前还没行动的人按概率 ~35% 参与（大多数人会弃牌）。 */
+function chen(a,b){
+  var hi=Math.max(a.r,b.r),lo=Math.min(a.r,b.r);
+  var v=hi===14?10:hi===13?8:hi===12?7:hi===11?6:hi/2;
+  if(a.r===b.r)return Math.max(v*2,5);
+  if(a.s===b.s)v+=2;
+  var gap=hi-lo-1;
+  v-=gap===0?0:gap===1?1:gap===2?2:gap===3?4:5;
+  if(gap<2&&hi<12)v+=1;
+  return Math.ceil(v)}
+/* 从剩余牌池中为对手抽一手符合范围下限的底牌（带重试上限的拒绝采样） */
+function drawHole(pool,thr){
+  var a,i,j,c1,c2;
+  for(a=0;a<14;a++){
+    i=(Math.random()*pool.length)|0;
+    do{j=(Math.random()*pool.length)|0}while(j===i);
+    c1=pool[i];c2=pool[j];
+    if(thr<=0||chen(c1,c2)>=thr)break}
+  if(i>j){var t=i;i=j;j=t}
+  var h=[pool[i],pool[j]];
+  pool.splice(j,1);pool.splice(i,1);
+  return h}
+/* 根据某玩家本手的翻前行动给出范围假设
+   rng: -1=还没行动 0=过牌/大盲免费看 1=跟注入池 2=加注 */
+function specFor(p){
+  if(street===0&&p.rng<0)return{thr:5,pIn:0.35};
+  return{thr:p.rng>=2?9:p.rng===1?5:0,pIn:1}}
+function oppSpecs(self){
+  var sp=[];
+  P.forEach(function(p){if(p!==self&&!p.fold&&p.hole)sp.push(specFor(p))});
+  return sp}
+function equity(hole,brd,specs,iter){
+  var win=0,tie=0,t,i;
+  var used={};hole.concat(brd).forEach(function(c){used[c.r+"_"+c.s]=1});
+  var basePool=[];for(var s=0;s<4;s++)for(var r=2;r<=14;r++)if(!used[r+"_"+s])basePool.push({r:r,s:s});
+  for(t=0;t<iter;t++){
+    var p=basePool.slice(),opps=[],o;
+    for(o=0;o<specs.length;o++)
+      if(Math.random()<specs[o].pIn)opps.push(drawHole(p,specs[o].thr));
+    if(!opps.length)opps.push(drawHole(p,specs.length?specs[0].thr:0));
+    for(i=p.length-1;i>0;i--){var j=(Math.random()*(i+1))|0,x=p[i];p[i]=p[j];p[j]=x}
+    var bd=brd.slice(),idx=0;while(bd.length<5)bd.push(p[idx++]);
+    var mine=ev7(hole.concat(bd)),best=1,eq=0;
+    for(o=0;o<opps.length;o++){var v=ev7(opps[o].concat(bd)),c=cmp(mine,v);
+      if(c<0){best=0;break}if(c===0)eq=1}
+    if(best){if(eq)tie++;else win++}}
+  return(win+tie*0.5)/iter}
+function countOuts(){
+  var bcs=board.filter(Boolean);
+  if(bcs.length<3||bcs.length>4)return null;
+  var seen={},pool=[],s,r;
+  P[0].hole.concat(bcs).forEach(function(c){seen[c.r+"_"+c.s]=1});
+  for(s=0;s<4;s++)for(r=2;r<=14;r++)if(!seen[r+"_"+s])pool.push({r:r,s:s});
+  var cur=bestVal(P[0].hole.concat(bcs))[0],n=0;
+  pool.forEach(function(c){if(bestVal(P[0].hole.concat(bcs).concat([c]))[0]>cur)n++});
+  return n}
+
+/* ---------- 经济系统 ---------- */
+var mem={};
+function store(k,v){try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}
+function fetchS(k){try{return localStorage.getItem(k)}catch(e){return mem[k]||null}}
+var SV;
+function loadSave(){
+  try{SV=JSON.parse(fetchS("tx_save"))||null}catch(e){SV=null}
+  if(!SV)SV={coins:2000,xp:0,lv:1,hands:0,streak:0,ach:{},lastBonus:""}}
+function save(){store("tx_save",JSON.stringify(SV))}
+var ACH=[
+ {id:"first",nm:"首胜",ds:"赢下第一手牌",rw:200},
+ {id:"flush",nm:"一条大河",ds:"用同花或更大牌型赢一手",rw:200},
+ {id:"boat",nm:"满载而归",ds:"用葫芦或更大牌型赢一手",rw:300},
+ {id:"allin",nm:"梭哈的人",ds:"全下并赢下摊牌",rw:300},
+ {id:"streak3",nm:"三连胜",ds:"连续赢下 3 手",rw:250},
+ {id:"rich",nm:"小有身家",ds:"金币达到 5000",rw:250},
+ {id:"h50",nm:"老牌友",ds:"完成 50 手牌",rw:300}];
+function toast(t){var el=E("toast");el.innerHTML=t;el.classList.add("show");
+  setTimeout(function(){el.classList.remove("show")},2600)}
+function unlock(id){
+  if(SV.ach[id])return;
+  var a=null;ACH.forEach(function(x){if(x.id===id)a=x});
+  SV.ach[id]=1;SV.coins+=a.rw;save();
+  toast("成就解锁 <b>"+a.nm+"</b> ＋"+a.rw+" 金币");topbar()}
+function gainXp(n){
+  SV.xp+=n;
+  while(SV.xp>=SV.lv*100){SV.xp-=SV.lv*100;SV.lv++;
+    SV.coins+=100*SV.lv;toast("升级！<b>Lv."+SV.lv+"</b> ＋"+(100*SV.lv)+" 金币")}
+  save();topbar()}
+function topbar(){
+  E("lvb").textContent="Lv."+SV.lv;
+  E("xpi").style.width=Math.min(100,SV.xp/(SV.lv*100)*100)+"%";
+  E("coin").textContent=SV.coins;
+  var today=new Date().toDateString();
+  E("bonus").disabled=SV.lastBonus===today;
+  E("bonus").textContent=SV.lastBonus===today?"明日再来":"每日+500";
+  E("buy").disabled=!handOver||SV.coins>=2000;
+  if(SV.coins>=5000)unlock("rich")}
+E("bonus").onclick=function(){
+  var today=new Date().toDateString();
+  if(SV.lastBonus===today)return;
+  SV.lastBonus=today;SV.coins+=500;save();topbar();
+  toast("每日奖励 <b>＋500</b> 金币")};
+E("buy").onclick=function(){
+  if(!handOver||SV.coins>=2000)return;
+  SV.coins=2000;P[0].ck=2000;save();topbar();render();
+  toast("已补码到 <b>2000</b>")};
+E("bAch").onclick=function(){
+  var h="";ACH.forEach(function(a){
+    h+='<li class="'+(SV.ach[a.id]?"got":"")+'"><span>'+a.nm+' · '+a.ds+'</span><span>'+(SV.ach[a.id]?"✓":"+"+a.rw)+'</span></li>'});
+  E("achlist").innerHTML=h;E("achv").classList.add("show")};
+E("achClose").onclick=function(){E("achv").classList.remove("show")};
+E("bOpp").onclick=function(){E("oppv").style.display="flex"};
+E("oppClose").onclick=function(){E("oppv").style.display="none"};
+E("bRev").onclick=function(){
+  var VC={g:"#4CAF7D",y:"#D9A441",r:"#E05252"};
+  var gn=0,yn=0,rn=0;
+  hist.forEach(function(x){if(x.nm==="你"&&x.vd){
+    if(x.vd==="g")gn++;else if(x.vd==="y")yn++;else rn++}});
+  var tot=gn+yn+rn,score=tot?(gn+yn*0.6)/tot:1;
+  var grade=score>=0.85?"A":score>=0.6?"B":"C";
+  var h='<div style="font-size:13px;margin-bottom:8px">本手决策评分 <b style="color:'
+    +(grade==="A"?VC.g:grade==="B"?VC.y:VC.r)+';font-size:16px">'+grade+'</b>'
+    +'　<span style="color:var(--dim)">好 '+gn+' · 边缘 '+yn+' · 漏洞 '+rn+'</span></div>';
+  h+='<div style="font-size:12.5px;line-height:1.8;margin-bottom:10px">';
+  P.forEach(function(p){
+    if(!p.hole)return;
+    h+='<div><b style="color:'+(p.ai?'var(--fg)':'var(--gold)')+'">'+p.nm+'</b> '
+      +p.hole.map(function(c){return RK[c.r]+SU[c.s]}).join(" ")
+      +(p.fold?' <span style="color:var(--mute)">（中途弃牌）</span>':'')+'</div>'});
+  h+='</div><div style="max-height:40vh;overflow-y:auto;font-size:12px;line-height:1.7;border-top:1px solid var(--line);padding-top:8px">';
+  var lastSt=-1;
+  hist.forEach(function(x){
+    if(x.st!==lastSt){lastSt=x.st;
+      h+='<div style="color:var(--gold);margin-top:8px">— '+STN[x.st]+(x.bd?'　'+x.bd:'')+' —</div>'}
+    var me=x.nm==="你";
+    var ctx='<span style="color:var(--mute)">底池'+x.pn+(x.tc>0?' · 需跟'+x.tc:'')+' · 剩'+x.stk+'</span>';
+    if(me){
+      h+='<div style="background:rgba(217,164,65,.08);border-radius:7px;padding:5px 8px;margin:4px 0">'
+        +'<span style="color:var(--gold)">你　'+x.act+'</span>　'
+        +(x.eq!=null?'<span style="color:var(--dim)">胜率'+Math.round(x.eq*100)+'%'
+          +(x.need>0?' / 需'+Math.round(x.need*100)+'%':'')+'</span>　':'')+ctx
+        +'<br><span style="color:'+VC[x.vd]+'">●</span> 推荐：'+(x.sug==="边缘"?"跟注/弃牌均可":x.sug)
+        +'　<span style="color:var(--dim)">'+x.note+'</span></div>'}
+    else{
+      h+='<div style="margin:2px 0">'+x.nm+'　'+x.act
+        +(x.eq!=null?'　<span style="color:var(--dim)">胜率'+Math.round(x.eq*100)+'%'
+          +(x.need>0?' / 需'+Math.round(x.need*100)+'%':'')+'</span>':'')+'　'+ctx
+        +'<br><span style="color:var(--mute)">'+x.why+'</span></div>'}});
+  h+='</div>';
+  E("revbody").innerHTML=h;E("revv").style.display="flex"};
+E("revClose").onclick=function(){E("revv").style.display="none"};
+
+/* ---------- 桌面与状态 ---------- */
+var P=[
+ {nm:"你",ai:false},
+ {nm:"毒王",tag:"松凶",ai:true,sty:{aggr:.85,bluff:.5,size:1.0,trap:.1,valThr:.45,raiseGap:.12,callLoose:.06}},
+ {nm:"丹牛",tag:"小球",ai:true,sty:{aggr:.5,bluff:.2,size:.45,trap:.15,valThr:.5,raiseGap:.18,callLoose:.08}},
+ {nm:"艾维",tag:"均衡",ai:true,sty:{aggr:.7,bluff:.3,size:.7,trap:.25,valThr:.52,raiseGap:.15,callLoose:.03}},
+ {nm:"教父",tag:"老派",ai:true,sty:{aggr:.75,bluff:.15,size:.85,trap:.05,valThr:.55,raiseGap:.15,callLoose:.02}},
+ {nm:"帽子",tag:"岩石",ai:true,sty:{aggr:.6,bluff:.05,size:.6,trap:.2,valThr:.62,raiseGap:.2,callLoose:-.02}},
+ {nm:"疯子",tag:"极松",ai:true,sty:{aggr:.6,bluff:.35,size:.75,trap:.02,valThr:.35,raiseGap:.1,callLoose:.12}}];
+var NP=P.length,POS=["庄","小盲","大盲","枪口","中前","中位","CO"];
+var SEATXY=[[50,97],[5,66],[12,26],[33,8],[67,8],[88,26],[95,66]];
+var BETXY=[[50,76],[22,62],[28,33],[40,23],[60,23],[72,33],[78,62]];
+P.forEach(function(p,i){p.ck=p.ai?2000:0});
+var deck,board=[null,null,null,null,null],pot=0,street,btn=0,turn=-9,curBet,acted,handOver=true,lastRaise;
+var heroWasAllin=false,hist=[],lastHeroEq=null;
+var STN=["翻牌前","翻牌","转牌","河牌"];
+function rec(nm,act,eq,need,why,pn,tc,stk,sug,vd,note){
+  hist.push({st:street,nm:nm,act:act,eq:eq,need:need,why:why,
+    pn:pn,tc:tc,stk:stk,sug:sug,vd:vd,note:note,
+    bd:board.filter(Boolean).map(function(c){return RK[c.r]+SU[c.s]}).join(" ")})}
+/* 修复①配套：翻前行动更新范围标记，只在翻前定型，避免翻后动作污染范围假设 */
+function markRange(p,act){
+  if(street===0){
+    if(act==="raise")p.rng=2;
+    else if(act==="call")p.rng=Math.max(p.rng,1);
+    else p.rng=Math.max(p.rng,0)}
+  else if(p.rng<0)p.rng=0}
+
+function buildSeats(){
+  var tw=E("tw");
+  P.forEach(function(p,i){
+    var d=document.createElement("div");
+    d.className="seat";d.id="seat"+i;
+    d.style.left=SEATXY[i][0]+"%";d.style.top=SEATXY[i][1]+"%";
+    d.innerHTML='<div class="btnmark">D</div><div class="ava">'+(p.ai?p.nm[0]:"👤")+'</div>'
+      +'<div class="nm">'+p.nm+'</div>'+(p.tag?'<div class="sty">'+p.tag+'</div>':'')+'<div class="ck mono" id="ck'+i+'">--</div>'
+      +(p.ai?'<div class="aic" id="hc'+i+'"></div>':'<div class="holes" id="holes"></div>');
+    tw.appendChild(d);
+    var b=document.createElement("div");
+    b.className="bet mono";b.id="bet"+i;
+    b.style.left=BETXY[i][0]+"%";b.style.top=BETXY[i][1]+"%";
+    tw.appendChild(b)})}
+function alive(){return P.filter(function(p){return !p.fold})}
+function canAct(){return P.filter(function(p){return !p.fold&&!p.allin})}
+function log(s){E("log").textContent=s}
+function cardEl(c,cls){
+  if(!c)return'<div class="card slot"></div>';
+  var red=(c.s===1||c.s===2);
+  return'<div class="card'+(red?' r':'')+(cls?' '+cls:'')+'"><span>'+RK[c.r]+'</span><small>'+SU[c.s]+'</small></div>'}
+
+function render(showAll){
+  P[0].ck=Math.max(P[0].ck,0);
+  P.forEach(function(p,i){
+    var s=E("seat"+i);
+    s.classList.toggle("act",turn===i&&!handOver);
+    s.classList.toggle("out",!!p.fold);
+    s.classList.toggle("dealer",btn===i&&!handOver);
+    E("ck"+i).textContent=p.ck;
+    var be=E("bet"+i);
+    if(p.bet>0){be.style.display="block";be.textContent=p.bet}else be.style.display="none";
+    if(p.ai){var hc=E("hc"+i);
+      var reveal=(showAll||P[0].fold)&&!p.fold&&p.hole;
+      hc.textContent=reveal?p.hole.map(function(c){return RK[c.r]+SU[c.s]}).join(" ")
+        +(P[0].fold&&!handOver&&p.pct!=null?"  "+p.pct+"%":""):""}});
+  E("pot").textContent=pot+P.reduce(function(a,p){return a+p.bet},0);
+  var bh="";for(var i=0;i<5;i++)bh+=cardEl(board[i]);
+  E("bd").innerHTML=bh;
+  E("holes").innerHTML=P[0].hole?cardEl(P[0].hole[0])+cardEl(P[0].hole[1]):"";
+  var toCall=curBet-P[0].bet;
+  E("bCheck").disabled=handOver||turn!==0||toCall>0;
+  E("bCall").disabled=handOver||turn!==0||toCall<=0;
+  E("bCall").textContent=toCall>0?"跟 "+Math.min(toCall,P[0].ck):"跟注";
+  E("bFold").disabled=handOver||turn!==0;
+  var rdis=handOver||turn!==0||P[0].ck<=Math.max(toCall,0);
+  ["r33","r50","r100","rAll"].forEach(function(id){E(id).disabled=rdis});
+  E("bDeal").disabled=!handOver}
+
+/* ---------- 教练 ---------- */
+function coach(){
+  if(handOver||!P[0].hole||P[0].fold)return;
+  var specs=oppSpecs(P[0]);if(!specs.length)return;
+  var bcs=board.filter(Boolean);
+  /* 修复②：加大采样量，压噪声（原版翻前仅 220 次，±3.4% 抖动） */
+  var eq=equity(P[0].hole,bcs,specs,street===0?600:400);
+  var toCall=curBet-P[0].bet,potNow=pot+P.reduce(function(a,p){return a+p.bet},0);
+  var need=toCall>0?toCall/(potNow+toCall):0;
+  E("eqv").textContent=Math.round(eq*100)+"%";
+  lastHeroEq={eq:eq,need:need};
+  E("po").textContent=toCall>0?Math.round(need*100)+"%":"无需跟注";
+  var hn="--";
+  if(bcs.length===5)hn=CAT[ev7(P[0].hole.concat(bcs))[0]];
+  else if(bcs.length>=3)hn=CAT[ev5(bestOf(P[0].hole.concat(bcs)))[0]];
+  E("hname").textContent=hn;
+  var os=countOuts();
+  if(os!==null){
+    var mul=bcs.length===3?4:2;
+    E("outrow").style.display="flex";
+    E("outs").textContent=os+" 张";
+    E("quick").textContent="≈"+Math.min(95,os*mul)+"%（×"+mul+"）";
+    E("real").textContent=Math.round(eq*100)+"%"}
+  else E("outrow").style.display="none";
+  var adv;
+  if(toCall<=0){
+    adv=eq>0.55?"胜率明显领先，建议主动加注建立底池。":eq>0.38?"胜率尚可，过牌控池或⅓池试探都合理。":"牌力偏弱，免费看牌就好，别主动投入。"}
+  else{
+    /* 修复③：加 ±5% 边缘带，贴着盈亏平衡的局面不再硬判弃牌 */
+    if(eq>need+0.15)adv="胜率 "+Math.round(eq*100)+"% 远高于所需 "+Math.round(need*100)+"%，跟注有利，牌力强可加注。";
+    else if(eq>need+0.05)adv="胜率高于底池赔率要求，跟注是正期望，但别恋战。";
+    else if(eq>need-0.05)adv="接近盈亏平衡的边缘局面（"+Math.round(eq*100)+"% 对 "+Math.round(need*100)+"%），跟注或弃牌都合理，可参考对手风格决定。";
+    else adv="需要 "+Math.round(need*100)+"% 胜率才值得跟，你只有 "+Math.round(eq*100)+"%，教练建议弃牌。"}
+  E("advice").textContent=adv}
+
+/* ---------- 牌局流程 ---------- */
+function updateSpecPct(){
+  var live=alive();
+  P.forEach(function(p){p.pct=null});
+  if(!P[0].fold||live.length<2)return;
+  var bcs=board.filter(Boolean),used={};
+  live.forEach(function(p){p.hole.forEach(function(c){used[c.r+"_"+c.s]=1})});
+  bcs.forEach(function(c){used[c.r+"_"+c.s]=1});
+  var pool=[];for(var s=0;s<4;s++)for(var r=2;r<=14;r++)if(!used[r+"_"+s])pool.push({r:r,s:s});
+  var IT=250,sc=live.map(function(){return 0});
+  for(var t=0;t<IT;t++){
+    var p2=pool.slice();
+    for(var i=p2.length-1;i>0;i--){var j=(Math.random()*(i+1))|0,x=p2[i];p2[i]=p2[j];p2[j]=x}
+    var bd=bcs.slice(),idx=0;while(bd.length<5)bd.push(p2[idx++]);
+    var vals=live.map(function(p){return ev7(p.hole.concat(bd))});
+    var best=vals[0],wi=[0];
+    for(i=1;i<vals.length;i++){var c=cmp(vals[i],best);
+      if(c>0){best=vals[i];wi=[i]}else if(c===0)wi.push(i)}
+    wi.forEach(function(w){sc[w]+=1/wi.length})}
+  live.forEach(function(p,i){p.pct=Math.round(sc[i]/IT*100)})}
+/* 修复④配套：p.paid 记录本手总投入，供边池结算 */
+function post(i,amt){amt=Math.min(amt,P[i].ck);P[i].ck-=amt;P[i].bet+=amt;P[i].paid+=amt;
+  if(P[i].ck===0)P[i].allin=true}
+function deal(){
+  if(SV.coins<BB){log("金币不足，先领每日奖励或看看成就。");return}
+  P[0].ck=SV.coins;
+  P.forEach(function(p){if(p.ai&&p.ck<BB){p.ck=2000;log(p.nm+" 补码。")}});
+  deck=mkDeck();board=[null,null,null,null,null];pot=0;street=0;handOver=false;lastRaise=BB;
+  heroWasAllin=false;hist=[];lastHeroEq=null;E("bRev").disabled=true;E("buy").disabled=true;
+  btn=(btn+1)%NP;
+  P.forEach(function(p){p.hole=[deck.pop(),deck.pop()];p.bet=0;p.paid=0;p.rng=-1;
+    p.fold=false;p.allin=false;p.pct=null});
+  var sb=(btn+1)%NP,bb=(btn+2)%NP;
+  post(sb,SB);post(bb,BB);
+  curBet=BB;acted=[];
+  log("新一手开始。你在"+POS[(0-btn+NP)%NP]+"位。");
+  turn=-1;render();
+  turn=(btn+2)%NP;
+  setTimeout(function(){render();coach();next()},550)}
+function next(){
+  var live=alive();
+  if(live.length===1)return win(live[0],"其他人都弃牌");
+  var need=canAct().filter(function(p){return p.bet<curBet||acted.indexOf(p)<0});
+  if(!need.length)return streetEnd();
+  do{turn=(turn+1)%NP}while(P[turn].fold||P[turn].allin);
+  if(acted.indexOf(P[turn])>=0&&P[turn].bet>=curBet)return streetEnd();
+  render();
+  if(P[turn].ai)setTimeout(aiAct,900+Math.random()*900);
+  else coach()}
+function streetEnd(){
+  P.forEach(function(p){pot+=p.bet;p.bet=0});
+  curBet=0;acted=[];lastRaise=BB;
+  if(street===3)return setTimeout(showdown,750);
+  street++;
+  var add=street===1?[0,1,2]:street===2?[3]:[4];
+  turn=-1;render();
+  var i=0;
+  function rev(){
+    board[add[i]]=deck.pop();render();i++;
+    if(i<add.length)setTimeout(rev,340);
+    else setTimeout(after,700)}
+  function after(){
+    updateSpecPct();
+    if(canAct().length<=1){render();return setTimeout(streetEnd,800)}
+    turn=btn;render();coach();next()}
+  setTimeout(rev,450)}
+function aiAct(){
+  var p=P[turn],st=p.sty;
+  /* 修复①：AI 也用范围感知胜率，翻前弃牌/跟注决策更接近真人 */
+  var eq=equity(p.hole,board.filter(Boolean),oppSpecs(p),250);
+  var toCall=curBet-p.bet,potNow=pot+P.reduce(function(a,x){return a+x.bet},0);
+  var need=toCall>0?toCall/(potNow+toCall):0;
+  var r=Math.random();
+  acted.push(p);
+  function rz(mult,why){rec(p.nm,"加注",eq,need,why,potNow,toCall,p.ck);markRange(p,"raise");
+    return raise(p,Math.max(lastRaise,Math.round(Math.max(potNow,BB*2)*mult/10)*10))}
+  if(toCall<=0){
+    if(eq>0.7&&r<st.trap){rec(p.nm,"过牌",eq,need,"强牌慢打，示弱设陷阱",potNow,0,p.ck);markRange(p,"check");log(p.nm+" 过牌。");return next()}
+    if(eq>st.valThr&&r<st.aggr)return rz(st.size,"价值加注：牌力领先，做大底池");
+    if(street>0&&eq<0.3&&r<st.bluff)return rz(st.size*0.8,"纯诈唬：牌力弱但想赶走对手");
+    rec(p.nm,"过牌",eq,need,eq>0.45?"控池：有牌力但不想打大":"牌弱，免费看牌",potNow,0,p.ck);
+    markRange(p,"check");log(p.nm+" 过牌。");return next()}
+  if(eq>need+st.raiseGap&&r<st.aggr)return rz(st.size,"价值加注：胜率远超所需赔率");
+  if(street>0&&eq<need&&r<st.bluff*0.45&&toCall<=potNow*0.6)return rz(st.size,"诈唬加注：用压力弥补牌力不足");
+  if(eq>need-st.callLoose){rec(p.nm,"跟注",eq,need,eq>need?"赔率允许的正期望跟注":"略亏但风格偏松，跟着看牌",potNow,toCall,p.ck);
+    markRange(p,"call");post(turn,toCall);log(p.nm+" 跟注 "+toCall+"。");return next()}
+  rec(p.nm,"弃牌",eq,need,"胜率低于所需赔率，止损",potNow,toCall,p.ck);
+  p.fold=true;log(p.nm+" 弃牌。");next()}
+function raise(p,by){
+  var toCall=curBet-p.bet,total=toCall+by;
+  post(turn,total);
+  if(p.bet>curBet){
+    var inc=p.bet-curBet;curBet=p.bet;
+    /* 修复⑤：只有「完整加注」（增量≥上一个加注额）才重开行动；
+       不足额的全下按规则不重置已行动名单 */
+    if(inc>=lastRaise){lastRaise=inc;acted=[p]}}
+  log(p.nm+(p.allin?" 全下！":" 加注到 "+curBet+"。"));
+  next()}
+/* 修复⑥：先把牌桌筹码结算进存档，再发成就/升级奖励，
+   原版顺序相反导致 heroWin 里加的金币被 SV.coins=P[0].ck 覆盖蒸发 */
+function settleHero(){
+  SV.coins=P[0].ck;SV.hands++;save();
+  E("bRev").disabled=false;
+  if(SV.hands>=50)unlock("h50");
+  gainXp(10);topbar()}
+function heroWin(cat,byShowdown){
+  SV.streak++;gainXp(25);
+  unlock("first");
+  if(SV.streak>=3)unlock("streak3");
+  if(byShowdown&&cat>=5)unlock("flush");
+  if(byShowdown&&cat>=6)unlock("boat");
+  if(byShowdown&&heroWasAllin)unlock("allin")}
+function win(p,why){
+  handOver=true;turn=-9;
+  var total=pot+P.reduce(function(a,x){return a+x.bet},0);
+  P.forEach(function(x){x.bet=0});p.ck+=total;pot=0;
+  log(p.nm+" 赢下 "+total+"（"+why+"）。");
+  if(p===P[0])E("advice").textContent="不摊牌拿下底池。回顾一下：你的下注让对手的弃牌合理吗？";
+  else E("advice").textContent="这手让掉了。回看教练提示，弃牌时机对不对比单手输赢更重要。";
+  settleHero();
+  if(p===P[0])heroWin(0,false);else{SV.streak=0;save()}
+  render(true)}
+/* 修复④：按每人实际投入分层结算（主池 + 边池），
+   全下不再「赢家通吃」，多余未被跟注的筹码自动退回 */
+function showdown(){
+  handOver=true;turn=-9;
+  P.forEach(function(x){x.bet=0});pot=0;
+  var live=alive();
+  live.forEach(function(p){p.val=ev7(p.hole.concat(board))});
+  var caps=[];live.forEach(function(p){if(caps.indexOf(p.paid)<0)caps.push(p.paid)});
+  caps.sort(function(a,b){return a-b});
+  var prev=0,gain={},heroWon=false,topVal=null,msgs=[];
+  caps.forEach(function(L){
+    var amt=0;
+    P.forEach(function(p){amt+=Math.min(p.paid,L)-Math.min(p.paid,prev)});
+    prev=L;
+    if(amt<=0)return;
+    var elig=live.filter(function(p){return p.paid>=L});
+    if(elig.length===1){elig[0].ck+=amt;
+      msgs.push("退回 "+elig[0].nm+" 未被跟注的 "+amt);return}
+    var best=null;elig.forEach(function(p){if(!best||cmp(p.val,best)>0)best=p.val});
+    var winr=elig.filter(function(p){return cmp(p.val,best)===0});
+    var share=Math.floor(amt/winr.length),remn=amt-share*winr.length;
+    winr.forEach(function(p,i){var g=share+(i===0?remn:0);
+      p.ck+=g;gain[p.nm]=(gain[p.nm]||0)+g});
+    if(!topVal)topVal=best;
+    if(winr.indexOf(P[0])>=0)heroWon=true});
+  var parts=[];for(var nm in gain)parts.push(nm+" 赢 "+gain[nm]);
+  log("摊牌："+(parts.length?parts.join("、"):"平分")
+    +(topVal?"（最大牌型「"+CAT[topVal[0]]+"」）":"")
+    +(msgs.length?"。"+msgs.join("；")+"。":"。"));
+  E("advice").textContent="复盘：赢家的成手是"+(topVal?CAT[topVal[0]]:"--")+"。回想翻牌、转牌时的胜率读数，和结果对得上吗？";
+  E("eqv").textContent="--";E("po").textContent="--";E("outrow").style.display="none";
+  settleHero();
+  if(heroWon)heroWin(P[0].val[0],true);
+  else{SV.streak=0;save()}
+  render(true)}
+
+/* ---------- 玩家操作 ---------- */
+function heroSug(eq,need,toCall){
+  if(toCall<=0)return eq>0.55?"加注":"过牌";
+  if(eq>need+0.15)return"加注";
+  if(eq>need+0.05)return"跟注";
+  if(eq>need-0.05)return"边缘";
+  return"弃牌"}
+function verdict(act,sug){
+  var R=act==="加注"||act==="全下";
+  if(sug==="边缘")return["y","边缘局面：跟注和弃牌都说得过去，长期看差别不大"];
+  if(sug==="加注"){
+    if(R)return["g","与推荐一致：领先时加注取价值"];
+    if(act==="跟注")return["y","偏保守：胜率大幅领先，只跟注少赢了价值"];
+    if(act==="过牌")return["y","偏保守：可以主动下注建立底池"];
+    return["r","错误：大幅领先却弃牌"]}
+  if(sug==="跟注"){
+    if(act==="跟注")return["g","与推荐一致：赔率允许的正期望跟注"];
+    if(R)return["y","激进路线：胜率够跟注，加注部分靠弃牌率支撑"];
+    return["r","错失正期望：赔率够却弃牌"]}
+  if(sug==="过牌"){
+    if(act==="过牌")return["g","与推荐一致：牌弱免费看牌"];
+    if(R)return["y","诈唬尝试：靠弃牌率盈利，偶尔可以，别成习惯"];
+    return["r","有免费看牌的机会却弃牌"]}
+  if(act==="弃牌")return["g","与推荐一致：胜率不足，止损正确"];
+  if(act==="跟注")return["r","漏洞：胜率明显低于所需赔率仍跟注"];
+  return["y","胜率不足的加注＝纯诈唬：靠对手弃牌盈利，注意频率和对象"]}
+function heroRec(act){
+  var potNow=pot+P.reduce(function(a,x){return a+x.bet},0);
+  var toCall=Math.max(curBet-P[0].bet,0);
+  var eq=lastHeroEq?lastHeroEq.eq:null,need=lastHeroEq?lastHeroEq.need:0;
+  var sug=eq!=null?heroSug(eq,need,toCall):null;
+  var vd=sug?verdict(act,sug):["y","无读数"];
+  rec("你",act,eq,need,"",potNow,toCall,P[0].ck,sug,vd[0],vd[1]);
+  markRange(P[0],act==="过牌"?"check":act==="跟注"?"call":act==="弃牌"?"check":"raise")}
+function userRaise(frac){
+  if(turn!==0||handOver)return;
+  var potNow=pot+P.reduce(function(a,x){return a+x.bet},0);
+  var toCall=Math.max(curBet-P[0].bet,0),by;
+  if(frac==="all")by=P[0].ck-toCall;
+  else by=Math.max(lastRaise,Math.round((potNow+toCall)*frac/10)*10);
+  by=Math.min(by,P[0].ck-toCall);
+  if(by<=0)return;
+  if(frac==="all")heroWasAllin=true;
+  heroRec(frac==="all"?"全下":"加注");
+  acted.push(P[0]);raise(P[0],by)}
+E("r33").onclick=function(){userRaise(1/3)};
+E("r50").onclick=function(){userRaise(0.5)};
+E("r100").onclick=function(){userRaise(1)};
+E("rAll").onclick=function(){userRaise("all")};
+E("bFold").onclick=function(){if(turn!==0||handOver)return;
+  heroRec("弃牌");
+  P[0].fold=true;acted.push(P[0]);
+  updateSpecPct();
+  log("你弃牌，进入观战模式——底牌全亮，看他们怎么打。");
+  E("advice").textContent="观战小课：对照每人的胜率数字和他的动作——谁在诈唬、谁在价值下注，一眼就能看穿。";next()};
+E("bCheck").onclick=function(){if(turn!==0||handOver)return;
+  heroRec("过牌");
+  acted.push(P[0]);log("你过牌。");next()};
+E("bCall").onclick=function(){if(turn!==0||handOver)return;
+  var t=curBet-P[0].bet;heroRec("跟注");post(0,t);
+  if(P[0].allin)heroWasAllin=true;
+  acted.push(P[0]);log("你跟注 "+t+"。");next()};
+E("bDeal").onclick=deal;
+
+loadSave();buildSeats();topbar();
+P[0].ck=SV.coins;render();
+})();
+</script>
+</body>
+</html>
