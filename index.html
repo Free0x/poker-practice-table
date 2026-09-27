@@ -124,11 +124,15 @@ align-items:center;justify-content:center;z-index:8;padding:20px}
   #buy{grid-column:2;grid-row:2;min-width:85px}
   .coach{padding:12px}
   .action-panel{margin-top:4px}
-  body.yourturn .wrap{padding-bottom:135px}
+  body.yourturn .wrap{padding-bottom:calc(135px + env(safe-area-inset-bottom))}
+  body.hand-over .wrap{padding-bottom:calc(75px + env(safe-area-inset-bottom))}
+  body.hand-over .utility-row{position:fixed;left:50%;bottom:0;transform:translateX(-50%);
+    width:min(430px,100%);margin:0;padding:9px 12px calc(9px + env(safe-area-inset-bottom));
+    background:#0D1210;box-shadow:0 -8px 22px rgba(0,0,0,.5);z-index:6}
   body.yourturn .action-panel{position:fixed;left:50%;bottom:0;transform:translateX(-50%);
     width:min(430px,100%);padding:9px 12px calc(9px + env(safe-area-inset-bottom));
     background:linear-gradient(180deg,rgba(13,18,16,.97),#0D1210);box-shadow:0 -8px 22px rgba(0,0,0,.5);z-index:6}
-  .action-panel button{min-height:48px;touch-action:manipulation}
+  .action-panel button,.utility-row button{min-height:48px;touch-action:manipulation}
 }
 @media(max-width:360px){
   .card{width:33px;height:47px;font-size:13px}
@@ -186,7 +190,7 @@ align-items:center;justify-content:center;z-index:8;padding:20px}
   <button id="rAll">全下</button>
 </div>
 </div>
-<div class="row r4">
+<div class="row r4 utility-row">
   <button id="bDeal">发新一手</button>
   <button id="bRev" disabled>复盘</button>
   <button id="bOpp">对手</button>
@@ -584,6 +588,7 @@ function cardEl(c,cls){
 
 function render(showAll){
   document.body.classList.toggle("yourturn",turn===0&&!handOver);
+  document.body.classList.toggle("hand-over",handOver);
   P[0].ck=Math.max(P[0].ck,0);
   P.forEach(function(p,i){
     var s=E("seat"+i);
