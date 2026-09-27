@@ -95,7 +95,7 @@ padding:10px 18px;font-size:13.5px;z-index:9;transition:transform .35s;white-spa
 #achv{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;
 align-items:center;justify-content:center;z-index:8;padding:20px}
 #achv.show{display:flex}
-.achbox{background:var(--panel);border-radius:14px;padding:18px;width:100%;max-width:340px}
+.achbox{background:var(--panel);border-radius:14px;padding:18px;width:100%;max-width:340px;max-height:calc(100dvh - 40px);overflow-y:auto}
 .achbox h3{margin:0 0 12px;font-size:14px;font-weight:500;letter-spacing:.15em}
 .achbox ul{list-style:none;margin:0 0 14px;padding:0}
 .achbox li{font-size:13px;padding:7px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}
@@ -112,7 +112,7 @@ align-items:center;justify-content:center;z-index:8;padding:20px}
 .profile-list{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0}
 .profile-list button{min-height:34px;padding:5px 9px;font-size:12px}
 .profile-note{font-size:11px;color:var(--mute);line-height:1.5;margin:9px 0}
-#profilev .achbox{max-height:85vh;overflow-y:auto}
+#newProfileName{font-size:16px}
 @media(max-width:480px){
   .profilebar{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:5px}
   .profilebar .spacer{display:none}
@@ -127,10 +127,10 @@ align-items:center;justify-content:center;z-index:8;padding:20px}
   body.yourturn .wrap{padding-bottom:calc(135px + env(safe-area-inset-bottom))}
   body.hand-over .wrap{padding-bottom:calc(75px + env(safe-area-inset-bottom))}
   body.hand-over .utility-row{position:fixed;left:50%;bottom:0;transform:translateX(-50%);
-    width:min(430px,100%);margin:0;padding:9px 12px calc(9px + env(safe-area-inset-bottom));
+    width:min(454px,100%);margin:0;padding:9px 12px calc(9px + env(safe-area-inset-bottom));
     background:#0D1210;box-shadow:0 -8px 22px rgba(0,0,0,.5);z-index:6}
   body.yourturn .action-panel{position:fixed;left:50%;bottom:0;transform:translateX(-50%);
-    width:min(430px,100%);padding:9px 12px calc(9px + env(safe-area-inset-bottom));
+    width:min(454px,100%);padding:9px 12px calc(9px + env(safe-area-inset-bottom));
     background:linear-gradient(180deg,rgba(13,18,16,.97),#0D1210);box-shadow:0 -8px 22px rgba(0,0,0,.5);z-index:6}
   .action-panel button,.utility-row button{min-height:48px;touch-action:manipulation}
 }
