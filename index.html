@@ -124,9 +124,10 @@ align-items:center;justify-content:center;z-index:8;padding:20px}
 
 <div class="coach">
   <h2>教练</h2>
-  <div class="eq"><span>胜率</span><b id="eqv">--</b><span>底池赔率</span><b id="po">--</b><span>牌型</span><b id="hname">--</b></div>
-  <div class="eq" id="outrow" style="display:none"><span>补牌</span><b id="outs">--</b><span>速算</span><b id="quick">--</b><span>模拟</span><b id="real">--</b></div>
+  <div class="eq"><span>估算胜率</span><b id="eqv">--</b><span>底池赔率</span><b id="po">--</b><span>牌型</span><b id="hname">--</b></div>
+  <div class="eq" id="outrow" style="display:none"><span>牌型提升牌</span><b id="outs">--</b><span>粗算</span><b id="quick">--</b><span>模拟</span><b id="real">--</b></div>
   <p id="advice">点「发新一手」开始。金币就是你的筹码，输光可以领每日奖励或达成成就回血。</p>
+  <small style="display:block;margin-top:7px;color:var(--mute);line-height:1.5">胜率基于假设的对手范围模拟；未计后续下注与弃牌率。牌型提升牌不一定是制胜补牌。</small>
 </div>
 
 <div id="log"></div>
@@ -252,6 +253,7 @@ function drawHole(pool,thr){
 /* 根据某玩家本手的翻前行动给出范围假设
    rng: -1=还没行动 0=过牌/大盲免费看 1=跟注入池 2=加注 */
 function specFor(p){
+  if(p.allin)return{thr:p.rng>=2?9:0,pIn:1};
   if(street===0&&p.rng<0)return{thr:5,pIn:0.35};
   return{thr:p.rng>=2?9:p.rng===1?5:0,pIn:1}}
 function oppSpecs(self){
@@ -259,7 +261,7 @@ function oppSpecs(self){
   P.forEach(function(p){if(p!==self&&!p.fold&&p.hole)sp.push(specFor(p))});
   return sp}
 function equity(hole,brd,specs,iter){
-  var win=0,tie=0,t,i;
+  var equityShare=0,t,i;
   var used={};hole.concat(brd).forEach(function(c){used[c.r+"_"+c.s]=1});
   var basePool=[];for(var s=0;s<4;s++)for(var r=2;r<=14;r++)if(!used[r+"_"+s])basePool.push({r:r,s:s});
   for(t=0;t<iter;t++){
@@ -269,11 +271,11 @@ function equity(hole,brd,specs,iter){
     if(!opps.length)opps.push(drawHole(p,specs.length?specs[0].thr:0));
     for(i=p.length-1;i>0;i--){var j=(Math.random()*(i+1))|0,x=p[i];p[i]=p[j];p[j]=x}
     var bd=brd.slice(),idx=0;while(bd.length<5)bd.push(p[idx++]);
-    var mine=ev7(hole.concat(bd)),best=1,eq=0;
+    var mine=ev7(hole.concat(bd)),best=1,tied=1;
     for(o=0;o<opps.length;o++){var v=ev7(opps[o].concat(bd)),c=cmp(mine,v);
-      if(c<0){best=0;break}if(c===0)eq=1}
-    if(best){if(eq)tie++;else win++}}
-  return(win+tie*0.5)/iter}
+      if(c<0){best=0;break}if(c===0)tied++}
+    if(best)equityShare+=1/tied}
+  return equityShare/iter}
 function countOuts(){
   var bcs=board.filter(Boolean);
   if(bcs.length<3||bcs.length>4)return null;
@@ -318,14 +320,14 @@ function topbar(){
   E("xpi").style.width=Math.min(100,SV.xp/(SV.lv*100)*100)+"%";
   E("coin").textContent=SV.coins;
   var today=new Date().toDateString();
-  E("bonus").disabled=SV.lastBonus===today;
+  E("bonus").disabled=!handOver||SV.lastBonus===today;
   E("bonus").textContent=SV.lastBonus===today?"明日再来":"每日+500";
   E("buy").disabled=!handOver||SV.coins>=2000;
   if(SV.coins>=5000)unlock("rich")}
 E("bonus").onclick=function(){
   var today=new Date().toDateString();
-  if(SV.lastBonus===today)return;
-  SV.lastBonus=today;SV.coins+=500;save();topbar();
+  if(!handOver||SV.lastBonus===today)return;
+  SV.lastBonus=today;SV.coins+=500;P[0].ck=SV.coins;save();topbar();render();
   toast("每日奖励 <b>＋500</b> 金币")};
 E("buy").onclick=function(){
   if(!handOver||SV.coins>=2000)return;
@@ -390,7 +392,7 @@ var NP=P.length,POS=["庄","小盲","大盲","枪口","中前","中位","CO"];
 var SEATXY=[[50,97],[5,66],[12,26],[33,8],[67,8],[88,26],[95,66]];
 var BETXY=[[50,76],[22,62],[28,33],[40,23],[60,23],[72,33],[78,62]];
 P.forEach(function(p,i){p.ck=p.ai?2000:0;p.bet=0});
-var deck,board=[null,null,null,null,null],pot=0,street,btn=0,turn=-9,curBet,acted,handOver=true,lastRaise;
+var deck,board=[null,null,null,null,null],pot=0,street,btn=0,turn=-9,curBet=0,acted=[],handOver=true,lastRaise,shortOpen=false;
 var heroWasAllin=false,hist=[],lastHeroEq=null;
 var STN=["翻牌前","翻牌","转牌","河牌"];
 function rec(nm,act,eq,need,why,pn,tc,stk,sug,vd,note){
@@ -450,7 +452,8 @@ function render(showAll){
   E("bCall").disabled=handOver||turn!==0||toCall<=0;
   E("bCall").textContent=toCall>0?"跟 "+Math.min(toCall,P[0].ck):"跟注";
   E("bFold").disabled=handOver||turn!==0;
-  var rdis=handOver||turn!==0||P[0].ck<=Math.max(toCall,0);
+  var rdis=handOver||turn!==0||P[0].ck<=Math.max(toCall,0)
+    ||(toCall>0&&acted.indexOf(P[0])>=0&&!shortOpen);
   ["r33","r50","r100","rAll"].forEach(function(id){E(id).disabled=rdis});
   E("bDeal").disabled=!handOver}
 
@@ -483,10 +486,10 @@ function coach(){
     adv=eq>0.55?"胜率明显领先，建议主动加注建立底池。":eq>0.38?"胜率尚可，过牌控池或⅓池试探都合理。":"牌力偏弱，免费看牌就好，别主动投入。"}
   else{
     /* 修复③：加 ±5% 边缘带，贴着盈亏平衡的局面不再硬判弃牌 */
-    if(eq>need+0.15)adv="胜率 "+Math.round(eq*100)+"% 远高于所需 "+Math.round(need*100)+"%，跟注有利，牌力强可加注。";
-    else if(eq>need+0.05)adv="胜率高于底池赔率要求，跟注是正期望，但别恋战。";
+    if(eq>need+0.15)adv="估算胜率 "+Math.round(eq*100)+"% 高于即时底池赔率 "+Math.round(need*100)+"%，可以考虑跟注；加注还需判断对手范围。";
+    else if(eq>need+0.05)adv="估算胜率高于即时底池赔率，跟注可能有利；后续下注会改变结果。";
     else if(eq>need-0.05)adv="接近盈亏平衡的边缘局面（"+Math.round(eq*100)+"% 对 "+Math.round(need*100)+"%），跟注或弃牌都合理，可参考对手风格决定。";
-    else adv="需要 "+Math.round(need*100)+"% 胜率才值得跟，你只有 "+Math.round(eq*100)+"%，教练建议弃牌。"}
+    else adv="即时底池赔率要求 "+Math.round(need*100)+"%，估算胜率 "+Math.round(eq*100)+"%；谨慎考虑弃牌。"}
   E("advice").textContent=adv}
 
 /* ---------- 牌局流程 ---------- */
@@ -516,7 +519,7 @@ function deal(){
   if(SV.coins<BB){log("金币不足，先领每日奖励或看看成就。");return}
   P[0].ck=SV.coins;
   P.forEach(function(p){if(p.ai&&p.ck<BB){p.ck=2000;log(p.nm+" 补码。")}});
-  deck=mkDeck();board=[null,null,null,null,null];pot=0;street=0;handOver=false;lastRaise=BB;
+  deck=mkDeck();board=[null,null,null,null,null];pot=0;street=0;handOver=false;lastRaise=BB;shortOpen=false;topbar();
   heroWasAllin=false;hist=[];lastHeroEq=null;E("bRev").disabled=true;E("buy").disabled=true;
   btn=(btn+1)%NP;
   P.forEach(function(p){p.hole=[deck.pop(),deck.pop()];p.bet=0;p.paid=0;p.rng=-1;
@@ -540,7 +543,7 @@ function next(){
   else coach()}
 function streetEnd(){
   P.forEach(function(p){pot+=p.bet;p.bet=0});
-  curBet=0;acted=[];lastRaise=BB;
+  curBet=0;acted=[];lastRaise=BB;shortOpen=false;
   if(street===3)return setTimeout(showdown,750);
   street++;
   var add=street===1?[0,1,2]:street===2?[3]:[4];
@@ -557,6 +560,7 @@ function streetEnd(){
   setTimeout(rev,450)}
 function aiAct(){
   var p=P[turn],st=p.sty;
+  var canRaise=acted.indexOf(p)<0||shortOpen;
   /* 修复①：AI 也用范围感知胜率，翻前弃牌/跟注决策更接近真人 */
   var eq=equity(p.hole,board.filter(Boolean),oppSpecs(p),250);
   var toCall=curBet-p.bet,potNow=pot+P.reduce(function(a,x){return a+x.bet},0);
@@ -567,24 +571,25 @@ function aiAct(){
     return raise(p,Math.max(lastRaise,Math.round(Math.max(potNow,BB*2)*mult/10)*10))}
   if(toCall<=0){
     if(eq>0.7&&r<st.trap){rec(p.nm,"过牌",eq,need,"强牌慢打，示弱设陷阱",potNow,0,p.ck);markRange(p,"check");log(p.nm+" 过牌。");return next()}
-    if(eq>st.valThr&&r<st.aggr)return rz(st.size,"价值加注：牌力领先，做大底池");
-    if(street>0&&eq<0.3&&r<st.bluff)return rz(st.size*0.8,"纯诈唬：牌力弱但想赶走对手");
+    if(canRaise&&eq>st.valThr&&r<st.aggr)return rz(st.size,"价值加注：牌力领先，做大底池");
+    if(canRaise&&street>0&&eq<0.3&&r<st.bluff)return rz(st.size*0.8,"纯诈唬：牌力弱但想赶走对手");
     rec(p.nm,"过牌",eq,need,eq>0.45?"控池：有牌力但不想打大":"牌弱，免费看牌",potNow,0,p.ck);
     markRange(p,"check");log(p.nm+" 过牌。");return next()}
-  if(eq>need+st.raiseGap&&r<st.aggr)return rz(st.size,"价值加注：胜率远超所需赔率");
-  if(street>0&&eq<need&&r<st.bluff*0.45&&toCall<=potNow*0.6)return rz(st.size,"诈唬加注：用压力弥补牌力不足");
+  if(canRaise&&eq>need+st.raiseGap&&r<st.aggr)return rz(st.size,"价值加注：胜率远超所需赔率");
+  if(canRaise&&street>0&&eq<need&&r<st.bluff*0.45&&toCall<=potNow*0.6)return rz(st.size,"诈唬加注：用压力弥补牌力不足");
   if(eq>need-st.callLoose){rec(p.nm,"跟注",eq,need,eq>need?"赔率允许的正期望跟注":"略亏但风格偏松，跟着看牌",potNow,toCall,p.ck);
     markRange(p,"call");post(turn,toCall);log(p.nm+" 跟注 "+toCall+"。");return next()}
   rec(p.nm,"弃牌",eq,need,"胜率低于所需赔率，止损",potNow,toCall,p.ck);
   p.fold=true;log(p.nm+" 弃牌。");next()}
 function raise(p,by){
-  var toCall=curBet-p.bet,total=toCall+by;
+  var previousBet=curBet,toCall=curBet-p.bet,total=toCall+by;
   post(turn,total);
   if(p.bet>curBet){
     var inc=p.bet-curBet;curBet=p.bet;
     /* 修复⑤：只有「完整加注」（增量≥上一个加注额）才重开行动；
        不足额的全下按规则不重置已行动名单 */
-    if(inc>=lastRaise){lastRaise=inc;acted=[p]}}
+    if(inc>=lastRaise){lastRaise=inc;acted=[p];shortOpen=false}
+    else if(previousBet===0)shortOpen=true}
   log(p.nm+(p.allin?" 全下！":" 加注到 "+curBet+"。"));
   next()}
 /* 修复⑥：先把牌桌筹码结算进存档，再发成就/升级奖励，
@@ -610,6 +615,7 @@ function win(p,why){
   else E("advice").textContent="这手让掉了。回看教练提示，弃牌时机对不对比单手输赢更重要。";
   settleHero();
   if(p===P[0])heroWin(0,false);else{SV.streak=0;save()}
+  P[0].ck=SV.coins;
   render(true)}
 /* 修复④：按每人实际投入分层结算（主池 + 边池），
    全下不再「赢家通吃」，多余未被跟注的筹码自动退回 */
@@ -618,23 +624,28 @@ function showdown(){
   P.forEach(function(x){x.bet=0});pot=0;
   var live=alive();
   live.forEach(function(p){p.val=ev7(p.hole.concat(board))});
-  var caps=[];live.forEach(function(p){if(caps.indexOf(p.paid)<0)caps.push(p.paid)});
+  var caps=[];P.forEach(function(p){if(caps.indexOf(p.paid)<0)caps.push(p.paid)});
   caps.sort(function(a,b){return a-b});
-  var prev=0,gain={},heroWon=false,topVal=null,msgs=[];
+  var prev=0,gain={},heroWon=false,topVal=null,msgs=[],lastWinners=[];
   caps.forEach(function(L){
-    var amt=0;
+    var amt=0,prevLevel=prev;
     P.forEach(function(p){amt+=Math.min(p.paid,L)-Math.min(p.paid,prev)});
     prev=L;
     if(amt<=0)return;
     var elig=live.filter(function(p){return p.paid>=L});
+    if(!elig.length)elig=lastWinners;
     if(elig.length===1){elig[0].ck+=amt;
-      msgs.push("退回 "+elig[0].nm+" 未被跟注的 "+amt);return}
+      gain[elig[0].nm]=(gain[elig[0].nm]||0)+amt;
+      if(elig[0]===P[0]&&amt>Math.min(P[0].paid,L)-Math.min(P[0].paid,prevLevel))heroWon=true;
+      lastWinners=elig;
+      return}
     var best=null;elig.forEach(function(p){if(!best||cmp(p.val,best)>0)best=p.val});
     var winr=elig.filter(function(p){return cmp(p.val,best)===0});
     var share=Math.floor(amt/winr.length),remn=amt-share*winr.length;
     winr.forEach(function(p,i){var g=share+(i===0?remn:0);
       p.ck+=g;gain[p.nm]=(gain[p.nm]||0)+g});
     if(!topVal)topVal=best;
+    lastWinners=winr;
     if(winr.indexOf(P[0])>=0)heroWon=true});
   var parts=[];for(var nm in gain)parts.push(nm+" 赢 "+gain[nm]);
   log("摊牌："+(parts.length?parts.join("、"):"平分")
@@ -645,6 +656,7 @@ function showdown(){
   settleHero();
   if(heroWon)heroWin(P[0].val[0],true);
   else{SV.streak=0;save()}
+  P[0].ck=SV.coins;
   render(true)}
 
 /* ---------- 玩家操作 ---------- */
@@ -659,13 +671,13 @@ function verdict(act,sug){
   if(sug==="边缘")return["y","边缘局面：跟注和弃牌都说得过去，长期看差别不大"];
   if(sug==="加注"){
     if(R)return["g","与推荐一致：领先时加注取价值"];
-    if(act==="跟注")return["y","偏保守：胜率大幅领先，只跟注少赢了价值"];
+    if(act==="跟注")return["y","跟注保守；是否加注还取决于对手弃牌率和后续下注"];
     if(act==="过牌")return["y","偏保守：可以主动下注建立底池"];
-    return["r","错误：大幅领先却弃牌"]}
+    return["r","按当前范围假设，这次弃牌可能过于谨慎"]}
   if(sug==="跟注"){
-    if(act==="跟注")return["g","与推荐一致：赔率允许的正期望跟注"];
+    if(act==="跟注")return["g","与估算一致：即时底池赔率支持跟注"];
     if(R)return["y","激进路线：胜率够跟注，加注部分靠弃牌率支撑"];
-    return["r","错失正期望：赔率够却弃牌"]}
+    return["r","按当前估算，弃牌可能错过有利跟注"]}
   if(sug==="过牌"){
     if(act==="过牌")return["g","与推荐一致：牌弱免费看牌"];
     if(R)return["y","诈唬尝试：靠弃牌率盈利，偶尔可以，别成习惯"];
@@ -685,6 +697,7 @@ function userRaise(frac){
   if(turn!==0||handOver)return;
   var potNow=pot+P.reduce(function(a,x){return a+x.bet},0);
   var toCall=Math.max(curBet-P[0].bet,0),by;
+  if(toCall>0&&acted.indexOf(P[0])>=0&&!shortOpen)return;
   if(frac==="all")by=P[0].ck-toCall;
   else by=Math.max(lastRaise,Math.round((potNow+toCall)*frac/10)*10);
   by=Math.min(by,P[0].ck-toCall);
