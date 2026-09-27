@@ -101,12 +101,24 @@ align-items:center;justify-content:center;z-index:8;padding:20px}
 .achbox li.got{color:var(--gold)}
 .achbox li span:last-child{white-space:nowrap;color:var(--mute)}
 .achbox li.got span:last-child{color:var(--gold)}
+.profilebar{display:flex;align-items:center;gap:7px;margin-bottom:9px;font-size:12px;color:var(--dim)}
+.profilebar strong{color:var(--fg);font-weight:500;max-width:125px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.profilebar button{min-height:32px;padding:5px 9px;font-size:12px}
+.profilebar .spacer{flex:1}
+.statgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin:10px 0}
+.statgrid div{padding:9px;background:#22302A;border-radius:8px;font-size:12px;color:var(--dim)}
+.statgrid b{display:block;color:var(--gold);font-size:17px;font-weight:500;margin-top:3px}
+.profile-list{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0}
+.profile-list button{min-height:34px;padding:5px 9px;font-size:12px}
+.profile-note{font-size:11px;color:var(--mute);line-height:1.5;margin:9px 0}
+#profilev .achbox{max-height:85vh;overflow-y:auto}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <div class="wrap">
 
+<div class="profilebar"><span>当前档案</span><strong id="profileName">访客</strong><span class="spacer"></span><button id="bProfiles">切换 / 新建</button><button id="bStats">我的画像</button></div>
 <div class="top">
   <div class="lv"><b id="lvb">Lv.1</b><div class="xpbar"><i id="xpi"></i></div></div>
   <div class="coins mono">🪙 <b id="coin">2000</b></div>
@@ -174,6 +186,21 @@ align-items:center;justify-content:center;z-index:8;padding:20px}
   <h3>本手复盘</h3>
   <div id="revbody"></div>
   <button id="revClose" style="width:100%;margin-top:12px">关闭</button>
+</div></div>
+<div id="profilev" style="position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:10;padding:20px">
+<div class="achbox">
+  <h3>玩家档案</h3>
+  <p class="profile-note">每个档案独立保存金币、成就和牌局统计；数据仅保存在当前浏览器。</p>
+  <div id="profileList" class="profile-list"></div>
+  <div class="row r2"><input id="newProfileName" maxlength="24" placeholder="新玩家昵称" aria-label="新玩家昵称" style="min-width:0;border-radius:9px;border:1px solid var(--line);background:#22302A;color:var(--fg);padding:9px"><button id="createProfile">建立档案</button></div>
+  <p id="profileError" class="profile-note" role="status"></p>
+  <button id="profileClose" style="width:100%">关闭</button>
+</div></div>
+<div id="statsv" style="position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:10;padding:20px">
+<div class="achbox">
+  <h3>我的牌风与练习建议</h3>
+  <div id="statsBody" style="max-height:65vh;overflow:auto"></div>
+  <button id="statsClose" style="width:100%">关闭</button>
 </div></div>
 
 <script>
@@ -290,11 +317,57 @@ function countOuts(){
 var mem={};
 function store(k,v){try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}
 function fetchS(k){try{return localStorage.getItem(k)}catch(e){return mem[k]||null}}
-var SV;
+var SV,profiles=[],activeProfileId,handStart=2000,firstProfileVisit=false;
+function emptyStats(){return{hands:0,vpip:0,pfr:0,postAgg:0,postCall:0,
+  facingBet:0,foldFacing:0,showdowns:0,showdownWins:0,net:0}}
+function initProfiles(){
+  firstProfileVisit=!fetchS("tx_profiles_v1")&&!fetchS("tx_save");
+  try{profiles=JSON.parse(fetchS("tx_profiles_v1"))||[]}catch(e){profiles=[]}
+  if(!Array.isArray(profiles))profiles=[];
+  profiles=profiles.filter(function(p){return p&&typeof p.id==="string"&&typeof p.name==="string"});
+  if(!profiles.length)profiles=[{id:"legacy",name:"访客"}];
+  activeProfileId=fetchS("tx_active_profile")||profiles[0].id;
+  if(!profiles.some(function(p){return p.id===activeProfileId}))activeProfileId=profiles[0].id;
+  store("tx_profiles_v1",JSON.stringify(profiles));store("tx_active_profile",activeProfileId)}
+function profileName(){var p=profiles.find(function(x){return x.id===activeProfileId});return p?p.name:"访客"}
 function loadSave(){
-  try{SV=JSON.parse(fetchS("tx_save"))||null}catch(e){SV=null}
-  if(!SV)SV={coins:2000,xp:0,lv:1,hands:0,streak:0,ach:{},lastBonus:""}}
-function save(){store("tx_save",JSON.stringify(SV))}
+  var raw=fetchS("tx_save_"+activeProfileId);
+  if(!raw&&activeProfileId==="legacy")raw=fetchS("tx_save");
+  try{SV=JSON.parse(raw)||null}catch(e){SV=null}
+  if(!SV||typeof SV!=="object")SV={coins:2000,xp:0,lv:1,hands:0,streak:0,ach:{},lastBonus:""};
+  SV.stats=Object.assign(emptyStats(),SV.stats||{});
+  E("profileName").textContent=profileName()}
+function save(){store("tx_save_"+activeProfileId,JSON.stringify(SV))}
+function switchProfile(id){
+  if(!handOver)return;
+  if(!profiles.some(function(p){return p.id===id}))return;
+  activeProfileId=id;store("tx_active_profile",id);loadSave();
+  P.forEach(function(p){p.ck=p.ai?2000:SV.coins;p.bet=0;p.fold=false;p.hole=null});
+  board=[null,null,null,null,null];pot=0;curBet=0;turn=-9;acted=[];hist=[];lastHeroEq=null;
+  E("bRev").disabled=true;E("eqv").textContent="--";E("po").textContent="--";
+  E("hname").textContent="--";E("outrow").style.display="none";
+  E("advice").textContent="点「发新一手」开始。统计从此档案记录的牌局中生成。";
+  log("");topbar();render();E("profilev").style.display="none"}
+function profileList(){
+  var box=E("profileList");box.innerHTML="";
+  profiles.forEach(function(p){
+    var b=document.createElement("button");
+    b.textContent=p.name+(p.id===activeProfileId?" ✓":"");
+    b.disabled=p.id===activeProfileId;
+    b.onclick=function(){switchProfile(p.id)};
+    box.appendChild(b)})}
+E("bProfiles").onclick=function(){
+  if(!handOver)return;
+  E("profileError").textContent="";profileList();E("profilev").style.display="flex"};
+E("profileClose").onclick=function(){E("profilev").style.display="none"};
+E("createProfile").onclick=function(){
+  if(!handOver)return;
+  var name=E("newProfileName").value.trim();
+  if(!name){E("profileError").textContent="请输入昵称。";return}
+  if(profiles.length>=20){E("profileError").textContent="当前浏览器最多建立 20 个档案。";return}
+  var id="p_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,8);
+  profiles.push({id:id,name:name});store("tx_profiles_v1",JSON.stringify(profiles));
+  E("newProfileName").value="";switchProfile(id)};
 var ACH=[
  {id:"first",nm:"首胜",ds:"赢下第一手牌",rw:200},
  {id:"flush",nm:"一条大河",ds:"用同花或更大牌型赢一手",rw:200},
@@ -323,6 +396,7 @@ function topbar(){
   E("bonus").disabled=!handOver||SV.lastBonus===today;
   E("bonus").textContent=SV.lastBonus===today?"明日再来":"每日+500";
   E("buy").disabled=!handOver||SV.coins>=2000;
+  E("bProfiles").disabled=!handOver;
   if(SV.coins>=5000)unlock("rich")}
 E("bonus").onclick=function(){
   var today=new Date().toDateString();
@@ -399,6 +473,51 @@ function rec(nm,act,eq,need,why,pn,tc,stk,sug,vd,note){
   hist.push({st:street,nm:nm,act:act,eq:eq,need:need,why:why,
     pn:pn,tc:tc,stk:stk,sug:sug,vd:vd,note:note,
     bd:board.filter(Boolean).map(function(c){return RK[c.r]+SU[c.s]}).join(" ")})}
+function recordHand(won,atShowdown){
+  var s=SV.stats,actions=hist.filter(function(x){return x.nm==="你"});
+  var pre=actions.filter(function(x){return x.st===0});
+  s.hands++;
+  if(pre.some(function(x){return x.act==="跟注"||x.act==="加注"||x.act==="全下"}))s.vpip++;
+  if(pre.some(function(x){return x.act==="加注"||x.act==="全下"}))s.pfr++;
+  actions.forEach(function(x){
+    if(x.st>0&&(x.act==="加注"||x.act==="全下"))s.postAgg++;
+    if(x.st>0&&x.act==="跟注")s.postCall++;
+    if(x.tc>0){s.facingBet++;if(x.act==="弃牌")s.foldFacing++}});
+  if(atShowdown&&!P[0].fold){s.showdowns++;if(won)s.showdownWins++}
+  s.net+=P[0].ck-handStart}
+function pct(n,d){return d?Math.round(n/d*100)+"%":"--"}
+function styleReport(s){
+  if(s.hands<30)return{label:"样本积累中",advice:[
+    "至少完成 30 局后再判断牌风；当前数字只能描述行为，不能证明策略好坏。",
+    "每局复盘一个关键决定：位置、下注额、对手范围和你当时的理由。"]};
+  var v=s.vpip/s.hands,aggr=s.postAgg/(s.postCall||1);
+  var label=(v<.22?"偏紧":v>.42?"偏松":"中等入池")
+    +" · "+(aggr>=2?"偏主动":aggr<.8?"偏被动":"攻守混合");
+  var advice=[];
+  if(v>.42)advice.push("入池频率较高：先复查前位跟注的弱牌，按位置缩紧起手范围。");
+  if(v<.18)advice.push("入池频率较低：在庄位和 CO 位练习选择性偷盲，记录对手的弃牌反应。");
+  if(s.vpip>=8&&s.pfr/s.vpip<.5)advice.push("主动加注占入池比例较低：复盘有价值牌时为何只跟注，练习制定加注尺寸。");
+  if(s.postCall>=5&&aggr<.8)advice.push("翻牌后跟注多于主动下注：挑出错过价值下注的牌局，比较不同下注尺寸。");
+  if(s.facingBet>=12&&s.foldFacing/s.facingBet>.7)advice.push("面对下注时弃牌较多：选 5 手复盘底池赔率和阻断牌，不要机械增加跟注。");
+  if(s.facingBet>=12&&s.foldFacing/s.facingBet<.25)advice.push("面对下注时较少弃牌：检查河牌跟注是否只凭希望，记录对手的价值下注范围。");
+  if(!advice.length)advice.push("指标未显示明显极端倾向；下一步按位置和下注轮次分析，而不是凭总胜率调整策略。");
+  return{label:label,advice:advice.slice(0,3)}}
+function showStats(){
+  var s=SV.stats,r=styleReport(s),box=E("statsBody");
+  var h='<p style="font-size:13px">已记录 <b>'+s.hands+'</b> 局 · '+r.label+'</p>'
+    +'<div class="statgrid">'
+    +'<div>主动入池 VPIP<b>'+pct(s.vpip,s.hands)+'</b></div>'
+    +'<div>翻前加注 PFR<b>'+pct(s.pfr,s.hands)+'</b></div>'
+    +'<div>翻后下注/加注 : 跟注<b>'+s.postAgg+' : '+s.postCall+'</b></div>'
+    +'<div>面对下注弃牌<b>'+pct(s.foldFacing,s.facingBet)+'</b></div>'
+    +'<div>摊牌获胜<b>'+pct(s.showdownWins,s.showdowns)+'</b></div>'
+    +'<div>牌局净筹码<b>'+(s.net>=0?'+':'')+s.net+'</b></div></div>'
+    +'<p style="font-size:12px;color:var(--dim)">本阶段练习建议</p><ol style="font-size:12px;line-height:1.6;padding-left:21px">';
+  r.advice.forEach(function(x){h+='<li style="margin-bottom:8px">'+x+'</li>'});
+  h+='</ol><p class="profile-note">只统计建立画像后的牌局；净筹码不计每日奖励、成就和升级奖励。对手是程序，表现不能直接推断真人牌桌的胜率。</p>';
+  box.innerHTML=h;E("statsv").style.display="flex"}
+E("bStats").onclick=showStats;
+E("statsClose").onclick=function(){E("statsv").style.display="none"};
 /* 修复①配套：翻前行动更新范围标记，只在翻前定型，避免翻后动作污染范围假设 */
 function markRange(p,act){
   if(street===0){
@@ -517,7 +636,7 @@ function post(i,amt){amt=Math.min(amt,P[i].ck);P[i].ck-=amt;P[i].bet+=amt;P[i].p
   if(P[i].ck===0)P[i].allin=true}
 function deal(){
   if(SV.coins<BB){log("金币不足，先领每日奖励或看看成就。");return}
-  P[0].ck=SV.coins;
+  P[0].ck=SV.coins;handStart=SV.coins;
   P.forEach(function(p){if(p.ai&&p.ck<BB){p.ck=2000;log(p.nm+" 补码。")}});
   deck=mkDeck();board=[null,null,null,null,null];pot=0;street=0;handOver=false;lastRaise=BB;shortOpen=false;topbar();
   heroWasAllin=false;hist=[];lastHeroEq=null;E("bRev").disabled=true;E("buy").disabled=true;
@@ -613,6 +732,7 @@ function win(p,why){
   log(p.nm+" 赢下 "+total+"（"+why+"）。");
   if(p===P[0])E("advice").textContent="不摊牌拿下底池。回顾一下：你的下注让对手的弃牌合理吗？";
   else E("advice").textContent="这手让掉了。回看教练提示，弃牌时机对不对比单手输赢更重要。";
+  recordHand(p===P[0],false);
   settleHero();
   if(p===P[0])heroWin(0,false);else{SV.streak=0;save()}
   P[0].ck=SV.coins;
@@ -653,6 +773,7 @@ function showdown(){
     +(msgs.length?"。"+msgs.join("；")+"。":"。"));
   E("advice").textContent="复盘：赢家的成手是"+(topVal?CAT[topVal[0]]:"--")+"。回想翻牌、转牌时的胜率读数，和结果对得上吗？";
   E("eqv").textContent="--";E("po").textContent="--";E("outrow").style.display="none";
+  recordHand(heroWon,true);
   settleHero();
   if(heroWon)heroWin(P[0].val[0],true);
   else{SV.streak=0;save()}
@@ -724,8 +845,9 @@ E("bCall").onclick=function(){if(turn!==0||handOver)return;
   acted.push(P[0]);log("你跟注 "+t+"。");next()};
 E("bDeal").onclick=deal;
 
-loadSave();buildSeats();topbar();
+initProfiles();loadSave();buildSeats();topbar();
 P[0].ck=SV.coins;render();
+if(firstProfileVisit)E("bProfiles").onclick();
 })();
 </script>
 </body>

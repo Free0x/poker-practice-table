@@ -4,7 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const test = require('node:test');
 
-function game() {
+function game(saved = new Map()) {
   const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
   const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
   const nodes = new Map();
@@ -19,7 +19,6 @@ function game() {
     },
     createElement: element
   };
-  const saved = new Map();
   const context = vm.createContext({
     document,
     localStorage: {
@@ -29,15 +28,18 @@ function game() {
     setTimeout() { return 1; },
     Math, Date
   });
-  const hook = 'globalThis.api={P,SV,equity,ev5,ev7,cmp,render,showdown,raise,topbar,'
+  const hook = 'globalThis.api={P,E,equity,ev5,ev7,cmp,render,showdown,raise,topbar,'
+    + 'save,switchProfile,styleReport,recordHand,'
+    + 'get SV(){return SV},get activeProfileId(){return activeProfileId},'
     + 'setState(s){if(s.board)board=s.board;if(s.pot!==undefined)pot=s.pot;'
     + 'if(s.curBet!==undefined)curBet=s.curBet;if(s.acted)acted=s.acted;'
+    + 'if(s.hist)hist=s.hist;if(s.handStart!==undefined)handStart=s.handStart;'
     + 'if(s.turn!==undefined)turn=s.turn;if(s.handOver!==undefined)handOver=s.handOver;'
     + 'if(s.shortOpen!==undefined)shortOpen=s.shortOpen;'
     + 'if(s.lastRaise!==undefined)lastRaise=s.lastRaise},'
     + 'getState(){return{acted,shortOpen,curBet}}};';
   vm.runInContext(script.replace(/\}\)\(\);\s*$/, hook + '})();'), context);
-  return { ...context.api, nodes };
+  return Object.assign(context.api, { nodes, saved });
 }
 
 const C = (r, s) => ({ r, s });
@@ -116,4 +118,41 @@ test('daily bonus cannot be claimed mid-hand and updates the table between hands
   g.nodes.get('bonus').onclick();
   assert.equal(g.SV.coins, 2500);
   assert.equal(g.P[0].ck, 2500);
+});
+
+test('profiles keep independent balances and survive a fresh browser session', () => {
+  const saved = new Map();
+  const g = game(saved);
+  g.SV.coins = 3200;
+  g.save();
+  g.E('newProfileName').value = 'Alice';
+  g.nodes.get('createProfile').onclick();
+  assert.equal(g.SV.coins, 2000);
+  const aliceId = g.activeProfileId;
+  g.SV.coins = 777;
+  g.save();
+  g.switchProfile('legacy');
+  assert.equal(g.SV.coins, 3200);
+  const reopened = game(saved);
+  assert.equal(reopened.SV.coins, 3200);
+  reopened.switchProfile(aliceId);
+  assert.equal(reopened.SV.coins, 777);
+});
+
+test('profile stats record actions and wait for adequate sample before labelling style', () => {
+  const g = game();
+  g.setState({ handStart: 2000, hist: [
+    { nm: '你', st: 0, act: '跟注', tc: 20 },
+    { nm: '你', st: 1, act: '弃牌', tc: 50 }
+  ] });
+  g.P[0].ck = 1980;
+  g.recordHand(false, false);
+  assert.equal(g.SV.stats.hands, 1);
+  assert.equal(g.SV.stats.vpip, 1);
+  assert.equal(g.SV.stats.foldFacing, 1);
+  assert.equal(g.SV.stats.net, -20);
+  assert.equal(g.styleReport(g.SV.stats).label, '样本积累中');
+  const style = g.styleReport({ ...g.SV.stats, hands: 40, vpip: 24, pfr: 4 });
+  assert.match(style.label, /偏松/);
+  assert.ok(style.advice.some(x => x.includes('前位跟注')));
 });
