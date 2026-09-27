@@ -107,6 +107,25 @@ test('a side pot respects all-in limits and conserves chips', () => {
   assert.equal(hero.ck, g.SV.coins);
 });
 
+test('uncalled excess is returned without counting as a showdown win', () => {
+  const g = game();
+  const board = [C(11, 0), C(5, 1), C(5, 2), C(10, 3), C(9, 1)];
+  g.P.forEach(p => { p.fold = true; p.bet = 0; p.paid = 0; p.ck = 2000; });
+  const [hero, rival] = g.P;
+  Object.assign(hero, { fold: false, paid: 2000, ck: 0,
+    hole: [C(12, 3), C(14, 3)] });
+  Object.assign(rival, { fold: false, paid: 120, ck: 1880,
+    hole: [C(13, 1), C(13, 3)] });
+  g.setState({ board, handOver: false });
+  g.showdown();
+  assert.equal(hero.ck, 1880);
+  assert.equal(rival.ck, 2120);
+  assert.equal(g.SV.coins, 1880);
+  assert.equal(g.SV.streak, 0);
+  assert.match(g.nodes.get('log').textContent, /你 退回未被跟注的 1880/);
+  assert.doesNotMatch(g.nodes.get('log').textContent, /你 赢/);
+});
+
 test('daily bonus cannot be claimed mid-hand and updates the table between hands', () => {
   const g = game();
   g.setState({ handOver: false });
