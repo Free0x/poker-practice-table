@@ -114,30 +114,48 @@ align-items:center;justify-content:center;z-index:8;padding:20px}
 .profile-note{font-size:11px;color:var(--mute);line-height:1.5;margin:9px 0}
 #newProfileName{font-size:16px}
 @media(max-width:480px){
+  html,body{height:100%;overflow:hidden}
+  body{height:100dvh;padding:0 10px env(safe-area-inset-bottom)}
+  .wrap{height:100%;min-height:0;display:flex;flex-direction:column;padding:0!important}
   .profilebar{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:5px}
   .profilebar .spacer{display:none}
   .profilebar strong{min-width:0;max-width:none}
-  .profilebar button{min-height:44px;padding:6px 8px}
+  .profilebar button{min-height:34px;padding:4px 7px}
+  .profilebar{flex:none;margin:3px 0 4px;font-size:11px}
   .top{grid-template-columns:minmax(0,1fr) auto}
-  #bonus,#buy{min-height:44px}
+  .top{flex:none;margin-bottom:2px}
+  #bonus,#buy{min-height:36px}
+  #bonus:disabled,#buy:disabled{display:none}
   #bonus{grid-column:1;grid-row:2}
   #buy{grid-column:2;grid-row:2;min-width:85px}
-  .coach{padding:12px}
-  .action-panel{margin-top:4px}
-  .wrap{padding-bottom:calc(206px + env(safe-area-inset-bottom))}
-  .game-controls{position:fixed;left:50%;bottom:0;transform:translateX(-50%);
-    width:min(454px,100%);padding:8px 12px calc(8px + env(safe-area-inset-bottom));
-    background:linear-gradient(180deg,rgba(13,18,16,.97),#0D1210);
-    box-shadow:0 -8px 22px rgba(0,0,0,.5);z-index:6}
-  .game-controls .utility-row{margin-top:7px}
-  .game-controls button{min-height:44px;touch-action:manipulation}
-  .tablewrap{height:clamp(315px,calc(100dvh - 345px),410px);aspect-ratio:auto}
-  .profilebar{margin-bottom:5px}
-  .top{margin-bottom:3px}
-  .seat .ava{width:44px;height:44px}
-  .seat .nm{font-size:10.5px}
-  .holes{min-height:42px}
-  .holes .card{width:30px;height:42px}
+  .tablewrap{flex:1 1 auto;min-height:215px;margin:0;aspect-ratio:auto}
+  .felt{inset:6% 3%}
+  .seat{width:58px}
+  .seat .ava{width:32px;height:32px;font-size:14px;margin-bottom:1px}
+  .seat .nm,.seat .ck{font-size:10px;line-height:1.1}
+  .seat .sty,.aic{font-size:8px;line-height:1.1}
+  .seat[id="seat0"]{top:75%!important}
+  .seat[id="seat3"],.seat[id="seat4"]{top:17%!important}
+  .holes{min-height:32px;margin-top:2px}
+  .holes .card{width:25px;height:32px;font-size:11px}
+  .holes .card small{font-size:9px}
+  .bcards{min-height:39px;gap:3px}
+  .bcards .card{width:28px;height:39px;font-size:12px}
+  .bcards .card small{font-size:10px}
+  .pot{font-size:11px;margin-bottom:4px}
+  .bet{font-size:9px;padding:1px 5px}
+  .coach{flex:none;padding:7px 9px;margin:2px 0 3px;max-height:28dvh;overflow:auto}
+  .coach h2{margin-bottom:3px}
+  .eq{font-size:11px;gap:2px 8px;margin-bottom:3px}
+  .coach p{font-size:11.5px;line-height:1.3}
+  .coach small{font-size:9px!important;line-height:1.2!important;margin-top:3px!important}
+  #log{flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:0;margin:0 2px 2px;font-size:10px;line-height:1.2}
+  .game-controls{flex:none;width:100%;padding:0 0 3px;background:var(--bg)}
+  .game-controls .utility-row{margin-top:4px}
+  .game-controls .row{gap:4px}
+  .game-controls .r4{margin-top:4px}
+  .game-controls button{min-height:38px;padding:5px 2px;font-size:11px;touch-action:manipulation}
+  body.hand-over .action-panel{display:none}
 }
 @media(max-width:360px){
   .card{width:33px;height:47px;font-size:13px}
@@ -792,7 +810,7 @@ function showdown(){
   live.forEach(function(p){p.val=ev7(p.hole.concat(board))});
   var caps=[];P.forEach(function(p){if(caps.indexOf(p.paid)<0)caps.push(p.paid)});
   caps.sort(function(a,b){return a-b});
-  var prev=0,gain={},heroWon=false,topVal=null,msgs=[],lastWinners=[];
+  var prev=0,gain={},refund={},heroWon=false,topVal=null,lastWinners=[];
   caps.forEach(function(L){
     var amt=0,prevLevel=prev;
     P.forEach(function(p){amt+=Math.min(p.paid,L)-Math.min(p.paid,prev)});
@@ -801,8 +819,10 @@ function showdown(){
     var elig=live.filter(function(p){return p.paid>=L});
     if(!elig.length)elig=lastWinners;
     if(elig.length===1){elig[0].ck+=amt;
-      gain[elig[0].nm]=(gain[elig[0].nm]||0)+amt;
-      if(elig[0]===P[0]&&amt>Math.min(P[0].paid,L)-Math.min(P[0].paid,prevLevel))heroWon=true;
+      var own=Math.min(elig[0].paid,L)-Math.min(elig[0].paid,prevLevel);
+      if(amt===own)refund[elig[0].nm]=(refund[elig[0].nm]||0)+amt;
+      else{gain[elig[0].nm]=(gain[elig[0].nm]||0)+amt;
+        if(elig[0]===P[0])heroWon=true}
       lastWinners=elig;
       return}
     var best=null;elig.forEach(function(p){if(!best||cmp(p.val,best)>0)best=p.val});
@@ -814,9 +834,10 @@ function showdown(){
     lastWinners=winr;
     if(winr.indexOf(P[0])>=0)heroWon=true});
   var parts=[];for(var nm in gain)parts.push(nm+" 赢 "+gain[nm]);
+  for(var rn in refund)parts.push(rn+" 退回未被跟注的 "+refund[rn]);
   log("摊牌："+(parts.length?parts.join("、"):"平分")
     +(topVal?"（最大牌型「"+CAT[topVal[0]]+"」）":"")
-    +(msgs.length?"。"+msgs.join("；")+"。":"。"));
+    +"。");
   E("advice").textContent="复盘：赢家的成手是"+(topVal?CAT[topVal[0]]:"--")+"。回想翻牌、转牌时的胜率读数，和结果对得上吗？";
   E("eqv").textContent="--";E("po").textContent="--";E("outrow").style.display="none";
   recordHand(heroWon,true);
