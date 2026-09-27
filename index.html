@@ -501,7 +501,7 @@ function styleReport(s){
   if(s.facingBet>=12&&s.foldFacing/s.facingBet>.7)advice.push("面对下注时弃牌较多：选 5 手复盘底池赔率和阻断牌，不要机械增加跟注。");
   if(s.facingBet>=12&&s.foldFacing/s.facingBet<.25)advice.push("面对下注时较少弃牌：检查河牌跟注是否只凭希望，记录对手的价值下注范围。");
   if(!advice.length)advice.push("指标未显示明显极端倾向；下一步按位置和下注轮次分析，而不是凭总胜率调整策略。");
-  return{label:label,advice:advice.slice(0,3)}}
+  return{label:"初步画像："+label,advice:advice.slice(0,3)}}
 function showStats(){
   var s=SV.stats,r=styleReport(s),box=E("statsBody");
   var h='<p style="font-size:13px">已记录 <b>'+s.hands+'</b> 局 · '+r.label+'</p>'
@@ -511,7 +511,7 @@ function showStats(){
     +'<div>翻后下注/加注 : 跟注<b>'+s.postAgg+' : '+s.postCall+'</b></div>'
     +'<div>面对下注弃牌<b>'+pct(s.foldFacing,s.facingBet)+'</b></div>'
     +'<div>摊牌获胜<b>'+pct(s.showdownWins,s.showdowns)+'</b></div>'
-    +'<div>牌局净筹码<b>'+(s.net>=0?'+':'')+s.net+'</b></div></div>'
+    +'<div>牌局净筹码<b>'+(s.net>0?'+':'')+s.net+'</b></div></div>'
     +'<p style="font-size:12px;color:var(--dim)">本阶段练习建议</p><ol style="font-size:12px;line-height:1.6;padding-left:21px">';
   r.advice.forEach(function(x){h+='<li style="margin-bottom:8px">'+x+'</li>'});
   h+='</ol><p class="profile-note">只统计建立画像后的牌局；净筹码不计每日奖励、成就和升级奖励。对手是程序，表现不能直接推断真人牌桌的胜率。</p>';
