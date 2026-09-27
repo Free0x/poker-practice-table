@@ -124,15 +124,20 @@ align-items:center;justify-content:center;z-index:8;padding:20px}
   #buy{grid-column:2;grid-row:2;min-width:85px}
   .coach{padding:12px}
   .action-panel{margin-top:4px}
-  body.yourturn .wrap{padding-bottom:calc(135px + env(safe-area-inset-bottom))}
-  body.hand-over .wrap{padding-bottom:calc(75px + env(safe-area-inset-bottom))}
-  body.hand-over .utility-row{position:fixed;left:50%;bottom:0;transform:translateX(-50%);
-    width:min(454px,100%);margin:0;padding:9px 12px calc(9px + env(safe-area-inset-bottom));
-    background:#0D1210;box-shadow:0 -8px 22px rgba(0,0,0,.5);z-index:6}
-  body.yourturn .action-panel{position:fixed;left:50%;bottom:0;transform:translateX(-50%);
-    width:min(454px,100%);padding:9px 12px calc(9px + env(safe-area-inset-bottom));
-    background:linear-gradient(180deg,rgba(13,18,16,.97),#0D1210);box-shadow:0 -8px 22px rgba(0,0,0,.5);z-index:6}
-  .action-panel button,.utility-row button{min-height:48px;touch-action:manipulation}
+  .wrap{padding-bottom:calc(206px + env(safe-area-inset-bottom))}
+  .game-controls{position:fixed;left:50%;bottom:0;transform:translateX(-50%);
+    width:min(454px,100%);padding:8px 12px calc(8px + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg,rgba(13,18,16,.97),#0D1210);
+    box-shadow:0 -8px 22px rgba(0,0,0,.5);z-index:6}
+  .game-controls .utility-row{margin-top:7px}
+  .game-controls button{min-height:44px;touch-action:manipulation}
+  .tablewrap{height:clamp(315px,calc(100dvh - 345px),410px);aspect-ratio:auto}
+  .profilebar{margin-bottom:5px}
+  .top{margin-bottom:3px}
+  .seat .ava{width:44px;height:44px}
+  .seat .nm{font-size:10.5px}
+  .holes{min-height:42px}
+  .holes .card{width:30px;height:42px}
 }
 @media(max-width:360px){
   .card{width:33px;height:47px;font-size:13px}
@@ -177,7 +182,7 @@ align-items:center;justify-content:center;z-index:8;padding:20px}
 
 <div id="log"></div>
 
-<div class="action-panel">
+<div class="game-controls"><div class="action-panel">
 <div class="row r3">
   <button id="bFold" class="warn">弃牌</button>
   <button id="bCheck">过牌</button>
@@ -195,6 +200,7 @@ align-items:center;justify-content:center;z-index:8;padding:20px}
   <button id="bRev" disabled>复盘</button>
   <button id="bOpp">对手</button>
   <button id="bAch">成就</button>
+</div>
 </div>
 </div>
 
