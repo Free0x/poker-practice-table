@@ -13,6 +13,7 @@ function game(saved = new Map()) {
     textContent: '', innerHTML: '', disabled: false, appendChild() {}
   });
   const document = {
+    body: element(),
     getElementById(id) {
       if (!nodes.has(id)) nodes.set(id, element());
       return nodes.get(id);

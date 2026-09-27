@@ -16,12 +16,12 @@
 html,body{margin:0;background:var(--bg);color:var(--fg)}
 body{font-family:"IBM Plex Sans","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
 min-height:100dvh;display:flex;justify-content:center;
-padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom))}
+padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));overflow-x:hidden}
 .wrap{width:100%;max-width:430px}
 .mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
 
 /* 顶栏：等级 / 金币 / 每日奖励 */
-.top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.top{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:7px;margin-bottom:7px}
 .lv{background:var(--panel);border-radius:9px;padding:7px 10px;display:flex;align-items:center;gap:8px;flex:1}
 .lv b{font-size:13px;font-weight:500;color:var(--gold);white-space:nowrap}
 .xpbar{flex:1;height:5px;border-radius:3px;background:#242E27;overflow:hidden}
@@ -31,7 +31,7 @@ padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bot
 #bonus{font-size:12.5px;padding:7px 10px;min-height:0;border-radius:9px}
 
 /* 牌桌 */
-.tablewrap{position:relative;width:100%;aspect-ratio:1/1.02;margin:2px 0 8px}
+.tablewrap{position:relative;width:100%;aspect-ratio:1/1.10;margin:2px 0 8px}
 .felt{position:absolute;inset:7% 3%;border-radius:48%/44%;
 background:radial-gradient(ellipse at 50% 42%,var(--felt1),var(--felt2) 78%);
 border:2px solid #2E4636;box-shadow:inset 0 0 34px rgba(0,0,0,.45)}
@@ -45,7 +45,7 @@ font-family:"IBM Plex Mono",monospace;font-size:14.5px;font-weight:500;line-heig
 .card.r{color:#C22E2E}
 .card.slot{background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.14)}
 .card small{font-size:12.5px}
-.seat{position:absolute;transform:translate(-50%,-50%);text-align:center;width:82px;transition:opacity .25s}
+.seat{position:absolute;transform:translate(-50%,-50%);text-align:center;width:clamp(60px,18vw,76px);transition:opacity .25s}
 .seat .ava{width:44px;height:44px;border-radius:50%;margin:0 auto 3px;
 background:#243128;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;
 font-size:17px;transition:border-color .2s,box-shadow .2s}
@@ -71,6 +71,7 @@ border-radius:20px;padding:2.5px 8px;white-space:nowrap;display:none}
 .eq{display:flex;flex-wrap:wrap;gap:4px 13px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;margin-bottom:7px}
 .eq span{color:var(--dim)}
 .coach p{font-size:13px;line-height:1.6;margin:0}
+.coach small{font-size:11.5px}
 #log{font-size:12px;line-height:1.65;color:var(--dim);min-height:36px;margin:0 2px 8px}
 
 /* 操作 */
@@ -112,6 +113,34 @@ align-items:center;justify-content:center;z-index:8;padding:20px}
 .profile-list button{min-height:34px;padding:5px 9px;font-size:12px}
 .profile-note{font-size:11px;color:var(--mute);line-height:1.5;margin:9px 0}
 #profilev .achbox{max-height:85vh;overflow-y:auto}
+@media(max-width:480px){
+  .profilebar{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:5px}
+  .profilebar .spacer{display:none}
+  .profilebar strong{min-width:0;max-width:none}
+  .profilebar button{min-height:44px;padding:6px 8px}
+  .top{grid-template-columns:minmax(0,1fr) auto}
+  #bonus,#buy{min-height:44px}
+  #bonus{grid-column:1;grid-row:2}
+  #buy{grid-column:2;grid-row:2;min-width:85px}
+  .coach{padding:12px}
+  .action-panel{margin-top:4px}
+  body.yourturn .wrap{padding-bottom:135px}
+  body.yourturn .action-panel{position:fixed;left:50%;bottom:0;transform:translateX(-50%);
+    width:min(430px,100%);padding:9px 12px calc(9px + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg,rgba(13,18,16,.97),#0D1210);box-shadow:0 -8px 22px rgba(0,0,0,.5);z-index:6}
+  .action-panel button{min-height:48px;touch-action:manipulation}
+}
+@media(max-width:360px){
+  .card{width:33px;height:47px;font-size:13px}
+  .card small{font-size:11px}
+  .bcards{min-height:47px;gap:4px}
+  .seat .ava{width:38px;height:38px}
+  .seat .nm{font-size:10.5px}
+  .seat .sty{font-size:9px}
+  .holes .card{width:29px;height:42px}
+  .profilebar{font-size:11px}
+  .profilebar button{font-size:11px;padding:6px}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -123,7 +152,7 @@ align-items:center;justify-content:center;z-index:8;padding:20px}
   <div class="lv"><b id="lvb">Lv.1</b><div class="xpbar"><i id="xpi"></i></div></div>
   <div class="coins mono">🪙 <b id="coin">2000</b></div>
   <button id="bonus">每日+500</button>
-  <button id="buy" style="font-size:12.5px;padding:7px 10px;min-height:0;border-radius:9px">补码</button>
+  <button id="buy" style="font-size:12.5px;padding:7px 10px;border-radius:9px">补码</button>
 </div>
 
 <div class="tablewrap" id="tw">
@@ -144,6 +173,7 @@ align-items:center;justify-content:center;z-index:8;padding:20px}
 
 <div id="log"></div>
 
+<div class="action-panel">
 <div class="row r3">
   <button id="bFold" class="warn">弃牌</button>
   <button id="bCheck">过牌</button>
@@ -154,6 +184,7 @@ align-items:center;justify-content:center;z-index:8;padding:20px}
   <button id="r50">加半池</button>
   <button id="r100">加满池</button>
   <button id="rAll">全下</button>
+</div>
 </div>
 <div class="row r4">
   <button id="bDeal">发新一手</button>
@@ -209,6 +240,9 @@ var SU=["♠","♥","♦","♣"],RK={2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9
 var CAT=["高牌","一对","两对","三条","顺子","同花","葫芦","四条","同花顺"];
 var SB=10,BB=20;
 function E(i){return document.getElementById(i)}
+var mobileFast=typeof matchMedia==="function"&&matchMedia("(max-width:480px)").matches;
+var reduceMotion=typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion:reduce)").matches;
+function delay(ms){return reduceMotion?Math.max(80,Math.round(ms*.15)):mobileFast?Math.round(ms*.55):ms}
 
 /* ---------- 牌力引擎 ---------- */
 function mkDeck(){var d=[],s,r;for(s=0;s<4;s++)for(r=2;r<=14;r++)d.push({r:r,s:s});
@@ -463,8 +497,8 @@ var P=[
  {nm:"帽子",tag:"岩石",ai:true,sty:{aggr:.6,bluff:.05,size:.6,trap:.2,valThr:.62,raiseGap:.2,callLoose:-.02}},
  {nm:"疯子",tag:"极松",ai:true,sty:{aggr:.6,bluff:.35,size:.75,trap:.02,valThr:.35,raiseGap:.1,callLoose:.12}}];
 var NP=P.length,POS=["庄","小盲","大盲","枪口","中前","中位","CO"];
-var SEATXY=[[50,97],[5,66],[12,26],[33,8],[67,8],[88,26],[95,66]];
-var BETXY=[[50,76],[22,62],[28,33],[40,23],[60,23],[72,33],[78,62]];
+var SEATXY=[[50,83],[12,67],[18,29],[35,15],[65,15],[82,29],[88,67]];
+var BETXY=[[50,64],[27,64],[30,35],[40,24],[60,24],[70,35],[73,64]];
 P.forEach(function(p,i){p.ck=p.ai?2000:0;p.bet=0});
 var deck,board=[null,null,null,null,null],pot=0,street,btn=0,turn=-9,curBet=0,acted=[],handOver=true,lastRaise,shortOpen=false;
 var heroWasAllin=false,hist=[],lastHeroEq=null;
@@ -549,6 +583,7 @@ function cardEl(c,cls){
   return'<div class="card'+(red?' r':'')+(cls?' '+cls:'')+'"><span>'+RK[c.r]+'</span><small>'+SU[c.s]+'</small></div>'}
 
 function render(showAll){
+  document.body.classList.toggle("yourturn",turn===0&&!handOver);
   P[0].ck=Math.max(P[0].ck,0);
   P.forEach(function(p,i){
     var s=E("seat"+i);
@@ -649,7 +684,7 @@ function deal(){
   log("新一手开始。你在"+POS[(0-btn+NP)%NP]+"位。");
   turn=-1;render();
   turn=(btn+2)%NP;
-  setTimeout(function(){render();coach();next()},550)}
+  setTimeout(function(){render();coach();next()},delay(550))}
 function next(){
   var live=alive();
   if(live.length===1)return win(live[0],"其他人都弃牌");
@@ -658,25 +693,25 @@ function next(){
   do{turn=(turn+1)%NP}while(P[turn].fold||P[turn].allin);
   if(acted.indexOf(P[turn])>=0&&P[turn].bet>=curBet)return streetEnd();
   render();
-  if(P[turn].ai)setTimeout(aiAct,900+Math.random()*900);
+  if(P[turn].ai)setTimeout(aiAct,delay(900+Math.random()*900));
   else coach()}
 function streetEnd(){
   P.forEach(function(p){pot+=p.bet;p.bet=0});
   curBet=0;acted=[];lastRaise=BB;shortOpen=false;
-  if(street===3)return setTimeout(showdown,750);
+  if(street===3)return setTimeout(showdown,delay(750));
   street++;
   var add=street===1?[0,1,2]:street===2?[3]:[4];
   turn=-1;render();
   var i=0;
   function rev(){
     board[add[i]]=deck.pop();render();i++;
-    if(i<add.length)setTimeout(rev,340);
-    else setTimeout(after,700)}
+    if(i<add.length)setTimeout(rev,delay(340));
+    else setTimeout(after,delay(700))}
   function after(){
     updateSpecPct();
-    if(canAct().length<=1){render();return setTimeout(streetEnd,800)}
+    if(canAct().length<=1){render();return setTimeout(streetEnd,delay(800))}
     turn=btn;render();coach();next()}
-  setTimeout(rev,450)}
+  setTimeout(rev,delay(450))}
 function aiAct(){
   var p=P[turn],st=p.sty;
   var canRaise=acted.indexOf(p)<0||shortOpen;
